@@ -119,6 +119,19 @@ class YAFSProtocolTests(unittest.TestCase):
         self.assertAlmostEqual(expected,150)
         self.assertAlmostEqual(m['mean_completed_response_ms'],expected)
 
+    def test_diagnosis_splits_latency_without_queueing(self):
+        from analysis.diagnosis import diagnose_instance
+        topology,apps,users,alloc=fixture()
+        topology['entity'].append(dict(id=2,IPT=2000,RAM=100,type='FOG'))
+        topology['link']=[dict(s=0,d=2,BW=75000,PR=3),dict(s=2,d=1,BW=37500,PR=7)]
+        result,m=self.execute((topology,apps,users,alloc),horizon=100,drain=200)
+        row=diagnose_instance(result)
+        self.assertEqual(row['completed'],1)
+        self.assertAlmostEqual(row['mean_total_ms'],m['mean_completed_response_ms'])
+        self.assertAlmostEqual(row['mean_net_queue_ms'],0.0)
+        self.assertAlmostEqual(row['mean_module_wait_ms'],0.0)
+        self.assertAlmostEqual(row['mean_proc_ms']+row['mean_ideal_net_ms'],row['mean_total_ms'])
+
     def test_source_streams(self):
         a=source_seed(1,'0','a',0);b=source_seed(1,'0','b',0)
         self.assertNotEqual(a,b)

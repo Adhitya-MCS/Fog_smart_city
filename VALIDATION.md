@@ -5,8 +5,8 @@ Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 Septe
 
 ## Pemeriksaan yang lulus
 
-- **25 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 9 pengujian model
+- **26 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
+  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 9 pengujian model ditambah 1 pengujian diagnosis
   workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
   runner yang membuat deadline tetap antarlevel). Cakupan protokol:
   - adapter bandwidth tidak mengubah konfigurasi kanonis; double conversion ditolak,
@@ -80,6 +80,12 @@ link, sehingga ia adalah batas bawah tanpa antrean. Skrip pembanding tidak ada d
   1000/fps dan 0,22 pada deadline tetap; deadline kamera tetap 116,185 ms pada semua level
   desain deadline tetap), sehingga penurunan terutama berasal dari beban,
   bukan dari pengetatan deadline. Bukan bukti peringkat algoritma.
+- **`analysis.diagnosis`** memecah latensi request selesai menjadi jaringan ideal, antrean jaringan,
+  tunggu modul, dan waktu proses; pada topologi uji tanpa antrean, totalnya sama dengan latensi trace
+  dan antreannya nol. Pada uji operasional Smoke E (1 run, budget 60), antrean modul selalu 0 dan
+  antrean jaringan menyumbang sekitar 88-99% latensi pada fps x3-x6 (mis. GA x6: 559 dari 565 ms),
+  sedangkan pada beban rendah (x1) antrean hanya sebagian kecil. Artinya degradasi pada uji ini
+  berasal dari antrean link, bukan dari CPU modul. Ini hasil satu run, belum kesimpulan.
 - **Baseline Nearest dan MinLatency** (hop terdekat / estimasi latensi terendah yang muat) lolos uji
   admisi RAM/CPU dan tidak lebih jauh/lambat dari Greedy pada skenario uji. Pada Smoke E
   (budget metaheuristik hanya 60), keduanya mengungguli Greedy, dan pada fps x2-x3 juga GA dan

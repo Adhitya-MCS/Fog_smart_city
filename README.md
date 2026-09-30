@@ -110,6 +110,19 @@ reproduksi tersendiri dengan satuan dan input yang dinyatakan eksplisit.
 `fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban
 sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
 
+## Diagnosis penyebab degradasi
+
+```bash
+python -B -m analysis.diagnosis results/main-v1      # menulis results/main-v1/diagnosis/
+```
+
+Per request selesai, latensi dipecah menjadi jaringan ideal (transmisi + propagasi dari trace
+link), antrean jaringan (teramati dikurangi ideal), tunggu modul, dan waktu proses. Per tier
+(L1/L2/L3/cloud) dilaporkan reservasi CPU statis (`Σ cpu_rate / IPT`) berdampingan dengan beban
+CPU runtime (waktu sibuk / jendela emisi; YAFS tidak membagi CPU, nilai > 1 berarti node
+menjalankan pekerjaan konkuren melebihi IPT-nya), jumlah node dengan beban runtime > 1, dan jumlah
+layanan di cloud. Keluaran: `diagnosis_runs.csv` dan `diagnosis_summary.csv`.
+
 ## Baseline dan ablasi
 
 Gunakan topology, master seed, workload, run, horizon, dan budget identik.

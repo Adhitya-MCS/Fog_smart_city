@@ -5,9 +5,10 @@ Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 Septe
 
 ## Pemeriksaan yang lulus
 
-- **20 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 4 pengujian model
-  workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`). Cakupan protokol:
+- **22 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
+  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 6 pengujian model
+  workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
+  runner yang membuat deadline tetap antarlevel). Cakupan protokol:
   - adapter bandwidth tidak mengubah konfigurasi kanonis; double conversion ditolak,
   - latensi optimizer cocok dengan trace YAFS untuk satu link dan multihop tanpa antrean,
   - reservasi CPU instructions/deadline tetap berlaku bila `cpu_rate` tidak ada; tidak ada
@@ -74,12 +75,15 @@ link, sehingga ia adalah batas bawah tanpa antrean. Skrip pembanding tidak ada d
 - **Parameter placeholder** wajib diganti sebelum hasil dipakai di paper: speedup L1b/L2/L3/cloud,
   `t_ref_ms` dan RAM modul, `FRAME_BYTES` (perkiraan), rentang fps, BW L3-cloud, PR L2-L3.
 - **Desain fps hanya diuji singkat** (Smoke C dan D: 1 run, 3 algoritma). Hasilnya operasional
-  saja: ketuntasan on-time turun pada kedua desain saat fps naik (mis. GA x6: 0,10 pada deadline
-  1000/fps dan 0,16 pada deadline tetap), sehingga penurunan terutama berasal dari beban,
+  saja: ketuntasan on-time turun pada kedua desain saat fps naik (mis. GA x6: 0,16 pada deadline
+  1000/fps dan 0,22 pada deadline tetap; deadline kamera tetap 116,185 ms pada semua level
+  desain deadline tetap), sehingga penurunan terutama berasal dari beban,
   bukan dari pengetatan deadline. Bukan bukti peringkat algoritma.
-- **Penalti cloud adaptif kini memakai tekanan `max(RAM, CPU)`**. Pada skenario 4 lapisan,
-  koefisien turun dari 0,0947 (fps x1) ke 0,0150 (fps x6), sedangkan versi RAM-saja tetap
-  0,1371. Manfaatnya belum dibuktikan; ablasi `--cloud-mode` (adaptive/constant/none) belum dijalankan.
+- **Penalti cloud adaptif kini memakai tekanan `max(RAM, CPU)` dari layanan yang ditempatkan di fog.**
+  Angka 0,0947 (fps x1) dan 0,0150 (fps x6) di skenario 4 lapisan dihitung dari total demand
+  seluruh layanan (versi RAM-saja tetap 0,1371); koefisien aktual pada placement hasil optimasi
+  berbeda (GA, budget 60, x6: 0,0218 dengan reservasi CPU fog 39.308 / 46.000 inst/ms) dan
+  harus dilaporkan sebagai tekanan reservasi fog berdasarkan placement. Manfaatnya belum dibuktikan; ablasi `--cloud-mode` (adaptive/constant/none) belum dijalankan.
 - **Benchmark penuh** (30 run per level, budget 3000) belum dijalankan.
 - **Tidak diperiksa ulang pada kode ini:** invarian emitted = completed + unfinished,
   on-time + miss + pending = emisi, ledger emisi identik antarstrategi, dan reprodusibilitas

@@ -37,5 +37,22 @@ class DeadlineDesignTests(unittest.TestCase):
             self.assertAlmostEqual(b["module"][0]["cpu_rate"], 4 * a["module"][0]["cpu_rate"])
 
 
+class RunnerSeedTests(unittest.TestCase):
+    def test_fixed_deadline_is_constant_across_levels_with_runner_seed(self):
+        from config.users_params import DESIGNS
+        from runner.run_experiment import camera_seed
+        seed = camera_seed(20260909, 42, 1)
+        levels = DESIGNS["fps-fixed-deadline"]
+        apps = [generate_applications(CAMS, layers, mult, seed, fixed) for layers, mult, fixed in levels]
+        for level_apps in apps[1:]:
+            for a, b in zip(apps[0], level_apps):
+                self.assertAlmostEqual(a["deadline"], b["deadline"])
+
+    def test_camera_seed_depends_on_run_only(self):
+        from runner.run_experiment import camera_seed
+        self.assertEqual(camera_seed(1, 42, 3), camera_seed(1, 42, 3))
+        self.assertNotEqual(camera_seed(1, 42, 3), camera_seed(1, 42, 4))
+
+
 if __name__ == "__main__":
     unittest.main()

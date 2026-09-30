@@ -23,6 +23,11 @@ def stable_seed(*parts):
     return int.from_bytes(hashlib.sha256('|'.join(map(str,parts)).encode()).digest()[:4],'big')
 
 
+def camera_seed(seed,topology_seed,run):
+    # Karakteristik kamera (fps dasar, fase) sama antarlevel dalam satu run; hanya level yang berubah.
+    return stable_seed(seed,topology_seed,run,'apps')
+
+
 def write_json(path,value):
     path.write_text(json.dumps(value,indent=2,allow_nan=False),encoding='utf-8')
 
@@ -72,7 +77,7 @@ def main():
             instance=args.output/f'apps_{workload}'/f'run_{run}'
             scenario=instance/'scenario'
             scenario.mkdir(parents=True)
-            app_seed=stable_seed(args.seed,args.topology_seed,workload,run,'apps')
+            app_seed=camera_seed(args.seed,args.topology_seed,run)
             traffic_seed=stable_seed(args.seed,args.topology_seed,workload,run,'traffic')
             applications=generate_applications(cameras,layers,fps_multiplier,app_seed,fixed_deadline)
             users=generate_users(applications,camera_to_l1,app_seed)
@@ -80,7 +85,7 @@ def main():
                 write_json(scenario/filename,value)
             for algorithm in algorithms:
                 allocation,search=optimize(algorithm,topology,applications,users,
-                    stable_seed(app_seed,algorithm),args.budget,weights,args.cloud_mode,args.initialization)
+                    stable_seed(app_seed,workload,algorithm),args.budget,weights,args.cloud_mode,args.initialization)
                 write_json(scenario/f'allocDefinition{algorithm}.json',{'initialAllocation':allocation})
                 result=instance/algorithm
                 run_simulation(algorithm+'Placement',args.duration,results_dir=result,

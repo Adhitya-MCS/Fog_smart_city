@@ -159,7 +159,9 @@ Untuk perbandingan antaralgoritma, analyzer menyediakan peak-tier paired tests.
 Ablasi antar-folder dijalankan dengan `python -m analysis.ablation OUT REF=... VARIAN=...`
 (lihat `scripts/run_ablation.sh`). Alat ini menolak perbandingan bila desain, hash manifest kamera,
 seed, budget, horizon, hash YAFS/kode hasil (`config`, `generator`, `placements`, `runner`), atau
-berkas skenario per run berbeda, dan menolak `instance_id` ganda. Pasangan yang kurang dari 5 run
+berkas skenario per run berbeda, atau folder dianalisis dengan kode metrik/paket berbeda
+(`analysis/analysis_manifest.json`, ditulis oleh `analysis.constraint_analysis`; folder tanpa berkas
+ini ditolak), dan menolak `instance_id` ganda. Pasangan yang kurang dari 5 run
 dilaporkan sebagai `insufficient paired runs`, bukan dihilangkan.
 Dekomposisi `analysis.diagnosis` hanya untuk request yang selesai; `completed_share` menunjukkan
 seberapa mewakili.

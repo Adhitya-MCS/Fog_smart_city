@@ -36,6 +36,26 @@ class ComparableTests(unittest.TestCase):
                 ablation.check_scenarios(Path(tmp) / 'ref', Path(tmp) / 'var', 'var')
 
 
+class MetricVersionTests(unittest.TestCase):
+    @staticmethod
+    def folder(tmp, name, manifest):
+        d = Path(tmp) / name / 'analysis'
+        d.mkdir(parents=True)
+        if manifest is not None:
+            (d / 'analysis_manifest.json').write_text(json.dumps(manifest))
+        return Path(tmp) / name
+
+    def test_same_metric_code_is_accepted_and_different_or_missing_is_rejected(self):
+        same = dict(metrics_code_sha256='a', packages={'pandas': '2'})
+        with tempfile.TemporaryDirectory() as tmp:
+            ref = self.folder(tmp, 'ref', same)
+            ablation.check_metrics(ref, self.folder(tmp, 'ok', dict(same)), 'ok')
+            with self.assertRaises(ValueError):
+                ablation.check_metrics(ref, self.folder(tmp, 'other', dict(same, metrics_code_sha256='b')), 'other')
+            with self.assertRaises(ValueError):
+                ablation.check_metrics(ref, self.folder(tmp, 'missing', None), 'missing')
+
+
 class CompareTests(unittest.TestCase):
     @staticmethod
     def groups(n, offset=0.0):
@@ -92,6 +112,7 @@ class CliIntegrationTests(unittest.TestCase):
             rows = json.loads((root / 'out' / 'ablation.json').read_text())['comparisons']
             self.assertTrue(rows and all(r['status'] == 'insufficient paired runs' for r in rows))
 
+            self.assertTrue((root / 'full' / 'analysis' / 'analysis_manifest.json').exists())
             manifest = json.loads((root / 'constant' / 'manifest.json').read_text())
             manifest['design'] = 'fps-intensity'
             (root / 'constant' / 'manifest.json').write_text(json.dumps(manifest))

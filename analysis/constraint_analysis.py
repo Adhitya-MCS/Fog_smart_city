@@ -95,6 +95,11 @@ def main():
         records.append({**metrics,**identity})
     if not records:raise ValueError('No new-protocol traces found')
     (output/'run_metrics.json').write_text(json.dumps(records,indent=2,allow_nan=False))
+    # Metric definitions used for run_metrics.json; ablation compares this before pairing folders.
+    import hashlib,importlib.metadata
+    (output/'analysis_manifest.json').write_text(json.dumps(dict(
+        metrics_code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        packages={k:importlib.metadata.version(k) for k in ['numpy','pandas','scipy']}),indent=2))
     with (output/'summary.csv').open('w',newline='') as f:
         writer=csv.DictWriter(f,fieldnames=['workload','algorithm','metric','n','mean','sample_std'])
         writer.writeheader()

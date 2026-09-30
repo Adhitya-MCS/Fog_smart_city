@@ -20,7 +20,8 @@ from analysis.statistik import holm, paired_values, rank_biserial
 METRICS = ['ontime_delivery_ratio', 'requested_cloud_ratio', 'deadline_miss_ratio', 'completion_ratio']
 MIN_PAIRS = 5
 # Must be identical for paired variants; only the ablated options (cloud_mode, alpha/beta/gamma,
-# initialization) and output paths may differ. Analysis code is excluded (it does not affect results).
+# initialization) and output paths may differ. Analysis code is excluded here because it does not
+# affect simulation results; the metric code is verified separately (check_metrics).
 REQUIRED_EQUAL = ('design', 'manifest_sha256', 'topology_seed', 'seed', 'runs', 'budget', 'duration',
                   'drain_time', 'yafs_sha256', 'python', 'packages')
 CODE_PREFIXES = ('config/', 'generator/', 'placements/', 'runner/')
@@ -36,6 +37,16 @@ def check_comparable(reference, variant, name):
         problems.append('experiment code hashes (config/generator/placements/runner) differ')
     if problems:
         raise ValueError(f'{name} is not comparable with the reference: ' + '; '.join(problems))
+
+
+def check_metrics(reference_path, variant_path, name):
+    """Both folders must have been analysed by the same metric code (analysis_manifest.json)."""
+    load = lambda p: json.loads((Path(p) / 'analysis' / 'analysis_manifest.json').read_text()) if (Path(p) / 'analysis' / 'analysis_manifest.json').exists() else None
+    ref, var = load(reference_path), load(variant_path)
+    if ref is None or var is None:
+        raise ValueError(f'{name}: missing analysis/analysis_manifest.json; re-run analysis.constraint_analysis on a new copy of the analysis')
+    if ref != var:
+        raise ValueError(f'{name} was analysed with different metric code or package versions than the reference')
 
 
 def check_scenarios(reference_path, variant_path, name):
@@ -104,6 +115,7 @@ def main():
     for name, path in named[1:]:
         check_comparable(manifests[named[0][0]], manifests[name], name)
         check_scenarios(named[0][1], path, name)
+        check_metrics(named[0][1], path, name)
     loaded = {name: load_variant(path) for name, path in named}
     reference = loaded[named[0][0]]
     rows = compare(reference, {k: v for k, v in loaded.items() if k != named[0][0]}, args.metrics.split(','))

@@ -10,7 +10,10 @@ deadline itu (lihat users_params untuk fps).
 """
 from config.topology_params import IPT_REF
 
-FRAME_BYTES = 150_000   # placeholder: frame >=960p terkompresi; ukur dari video CityFlow
+# Perkiraan (design), bukan hasil ukur. Acuan: CityFlow >=960p (Tang et al., 2019, Sec. 3.1);
+# OpenFog hlm. 96: 12 Mbps @ 30 fps = rata-rata 50 KB/frame video (batas bawah).
+# Frame mandiri (JPEG/I-frame) diasumsikan lebih besar. Wajib diukur dari video CityFlow.
+FRAME_BYTES = 150_000
 
 # t_ref_ms: waktu layanan per request di L1a. in/out_bytes: request dan response.
 MODULES = {

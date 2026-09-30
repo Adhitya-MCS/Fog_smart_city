@@ -2,6 +2,8 @@
 
 Run: python -m analysis.diagnosis RESULTS_ROOT      (writes RESULTS_ROOT/diagnosis/)
 
+Only requests completed before the observation cutoff are decomposed (see completed_share); with many
+unfinished requests the split describes the finished ones, not the delay of every request.
 Latency of a completed request = request network + module wait + processing + response network.
 Network time is split into the ideal part (transmission + propagation, from the link trace) and
 queueing (observed minus ideal). CPU reservation (static admission, sum cpu_rate / IPT) is reported
@@ -44,7 +46,8 @@ def diagnose_instance(directory):
     rt['net_queue'] = (rt['net'] - rt['ideal_net']).clip(lower=0.0)
     rt['tier'] = rt['TOPO.dst'].map(lambda n: nodes[n]['type'])
 
-    row = dict(completed=int(len(rt)))
+    emitted = len(json.loads((d / 'emissions.json').read_text()))
+    row = dict(completed=int(len(rt)), emitted=emitted, completed_share=len(rt) / emitted if emitted else None)
     if len(rt):
         for col in ['total', 'proc', 'module_wait', 'ideal_net', 'net_queue']:
             row[f'mean_{col}_ms'] = float(rt[col].mean())

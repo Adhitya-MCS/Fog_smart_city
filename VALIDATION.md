@@ -5,8 +5,9 @@ Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 Septe
 
 ## Pemeriksaan yang lulus
 
-- **26 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 9 pengujian model ditambah 1 pengujian diagnosis
+- **33 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
+  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 17 pengujian model, diagnosis, ablasi, dan integrasi CLI (dua run kecil 7 level: deadline tetap
+  sama antarlevel, ablasi CLI melaporkan pasangan tak cukup, desain berbeda ditolak)
   workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
   runner yang membuat deadline tetap antarlevel). Cakupan protokol:
   - adapter bandwidth tidak mengubah konfigurasi kanonis; double conversion ditolak,

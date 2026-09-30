@@ -59,14 +59,14 @@ def main():
         'python':platform.python_version(),'packages':{k:importlib.metadata.version(k) for k in ['simpy','networkx','numpy','pandas','scipy']},
         'experiment_sha256':{str(f.relative_to(_project_root)):hashlib.sha256(f.read_bytes()).hexdigest() for d in ['config','generator','placements','runner','analysis'] for f in (_project_root/d).rglob('*.py')},
         'units':'canonical bytes/ms, engine BW divided by 1e6, simulation clock ms',
-        'cpu':'original static instructions/deadline admission; native per-module execution',
+        'cpu':'static admission with cpu_rate = instructions x arrival rate (= instructions/deadline when deadline is the frame interval); native per-module execution',
         'network':'native YAFS link queuing including propagation; not altered',
-        'traffic':'one independent native-discretized exponential stream per BOT task',
+        'traffic':'one periodic camera stream (random phase) per BOT task, integer-ms replay',
         'statistics':'paired by instance ID; Holm correction per metric; signed effect sizes'})
     cameras=load_cameras(args.manifest)
     topology,camera_to_l1=generate_hierarchical_topology(cameras,args.topology_seed)
     for level in levels:
-        layers,fps_multiplier=level
+        layers,fps_multiplier,fixed_deadline=level
         workload=level_label(args.design,level)
         for run in range(1,args.runs+1):
             instance=args.output/f'apps_{workload}'/f'run_{run}'
@@ -74,7 +74,7 @@ def main():
             scenario.mkdir(parents=True)
             app_seed=stable_seed(args.seed,args.topology_seed,workload,run,'apps')
             traffic_seed=stable_seed(args.seed,args.topology_seed,workload,run,'traffic')
-            applications=generate_applications(cameras,layers,fps_multiplier,app_seed)
+            applications=generate_applications(cameras,layers,fps_multiplier,app_seed,fixed_deadline)
             users=generate_users(applications,camera_to_l1,app_seed)
             for filename,value in [('networkDefinition.json',topology),('appDefinition.json',applications),('usersDefinition.json',users)]:
                 write_json(scenario/filename,value)
@@ -86,7 +86,7 @@ def main():
                 run_simulation(algorithm+'Placement',args.duration,results_dir=result,
                     scenarios_dir=scenario,drain_time=args.drain_time,run_seed=traffic_seed)
                 write_json(result/'time_log.json',search)
-                identity=dict(algorithm=algorithm,workload=workload,design=args.design,layers=layers,fps_multiplier=fps_multiplier,run=run,
+                identity=dict(algorithm=algorithm,workload=workload,design=args.design,layers=layers,fps_multiplier=fps_multiplier,fixed_deadline=fixed_deadline,run=run,
                     instance_id=f'{args.seed}:{args.topology_seed}:{workload}:{run}',
                     application_seed=app_seed,traffic_seed=traffic_seed)
                 write_json(result/'instance.json',identity)

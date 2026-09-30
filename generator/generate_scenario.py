@@ -17,16 +17,17 @@ from config import app_params as app_cfg
 from config import users_params as user_cfg
 
 
-def generate_applications(cameras, layers, fps_multiplier=1.0, seed=42):
-    """Satu aplikasi BOT per kamera; deadline = interval frame (1000/fps)."""
+def generate_applications(cameras, layers, fps_multiplier=1.0, seed=42, fixed_deadline=False):
+    """Satu aplikasi BOT per kamera; deadline = interval frame (1000/fps), atau interval fps dasar bila fixed_deadline."""
     rng = random.Random(seed)
     modules = app_cfg.layer_modules(layers)
     print(f"Generating {len(cameras)} applications ({layers} layers, fps x{fps_multiplier})...")
 
     applications = []
     for app_id, cam in enumerate(cameras):
-        fps = rng.uniform(user_cfg.FPS_MIN, user_cfg.FPS_MAX) * fps_multiplier
-        deadline = 1000.0 / fps
+        base_fps = rng.uniform(user_cfg.FPS_MIN, user_cfg.FPS_MAX)
+        fps = base_fps * fps_multiplier
+        deadline = 1000.0 / (base_fps if fixed_deadline else fps)
         app = {"id": app_id, "name": str(app_id), "deadline": deadline, "camera": cam["cam_id"], "fps": fps,
                "HwReqs": 1, "MaxReqs": 200, "MaxLatency": deadline,
                "transmission": [], "module": [], "message": []}
@@ -36,8 +37,8 @@ def generate_applications(cameras, layers, fps_multiplier=1.0, seed=42):
             req_msg, resp_msg, act_name = f"M.USER.APP.{app_id}_{n}", f"R.APP.{app_id}_{n}", f"{app_id}_{n}_ACT"
 
             app["module"].append({"id": n, "name": module_name, "IPT": spec["instructions"], "RAM": spec["RAM"],
-                                  "instructions": spec["instructions"], "bytes": spec["in_bytes"],
-                                  "output_bytes": spec["out_bytes"], "deadline": deadline,
+                                  "instructions": spec["instructions"], "cpu_rate": spec["instructions"] * fps / 1000.0,
+                                  "bytes": spec["in_bytes"], "output_bytes": spec["out_bytes"], "deadline": deadline,
                                   "type": "MODULE", "kind": spec["kind"]})
             # Actuator = sink di node kamera; tidak dioptimasi (ditetapkan di build_problem).
             app["module"].append({"id": 1_000_000 + n, "name": act_name, "IPT": 1, "RAM": 1, "instructions": 0,

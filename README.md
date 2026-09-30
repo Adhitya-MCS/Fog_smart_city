@@ -72,8 +72,9 @@ Hanya native `hop_aware` routing dan BOT request–response yang divalidasi.
 | Statistik | Pairing berdasarkan instance ID, signed rank-biserial yang menangani zero differences, dan koreksi Holm per metrik |
 
 Yang **tidak berubah**: kode YAFS, native per-module CPU execution, native link
-queue yang mengikutsertakan propagation, CPU reservation `instructions/deadline`,
-dan makna headroom cloud dalam objective asli. Varian algoritma tetap berasal dari
+queue yang mengikutsertakan propagation, dan makna headroom dalam objective asli.
+Reservasi CPU berupa laju (`cpu_rate` bila ada, jika tidak `instructions/deadline`) dan
+penalti cloud adaptif mengikuti tekanan fog `max(RAM, CPU)`. Varian algoritma tetap berasal dari
 sumber; fallback leader GWO diperbaiki ketika kurang dari tiga solusi unik.
 Mutasi HHO diberi nama segment mutation agar tidak disalahartikan sebagai sampling
 Lévy. PSO/GWO/WOA/HHO adalah adaptasi diskrit khusus proyek, bukan implementasi
@@ -98,6 +99,17 @@ Angka lama dengan BW mentah 75.000 langsung ke engine merepresentasikan konfigur
 numerik berbeda. Jangan menggabungkan hasil lama dan hasil terkalibrasi. Jika ingin
 mereproduksi konfigurasi mentah penelitian lain, lakukan sebagai eksperimen
 reproduksi tersendiri dengan satuan dan input yang dinyatakan eksplisit.
+
+## Desain stress test (`config/users_params.py`)
+
+| Desain | Level | Deadline |
+| --- | --- | --- |
+| `app-layering` | 1-4 lapisan analitik, fps nominal | 1000/fps |
+| `fps-intensity` | 4 lapisan, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
+| `fps-fixed-deadline` | 4 lapisan, fps x 0,5 ... 6 | tetap = interval fps dasar |
+
+`fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban
+sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
 
 ## Baseline dan ablasi
 
@@ -171,7 +183,8 @@ ke simulator.
 
 ## Batas ilmiah
 
-CPU reservation tetap `instructions/deadline`. Ini aturan kelayakan placement,
+Reservasi CPU adalah laju: `cpu_rate = instructions x laju kedatangan` pada generator
+smart-city (sama dengan `instructions/deadline` bila deadline = interval frame). Ini aturan kelayakan placement,
 bukan jaminan bahwa runtime YAFS menerapkan pembagian kapasitas CPU agregat yang
 sama. Simulasi mempertahankan concurrency per module. Demikian pula propagation
 tetap masuk native link scheduling. Efek kedua asumsi perlu dinyatakan di metode
@@ -193,4 +206,4 @@ ketika folder ini dibuat. Salinan ini mempertahankan titik awal yang tercatat;
 perubahan sumber tersebut tidak ditimpa atau digabungkan otomatis.
 `SOURCE_CHANGES_SINCE_COPY.json` mencatat perbedaannya. Semua file YAFS tetap sama
 baik terhadap snapshot awal maupun folder sumber saat verifikasi akhir.
-Lihat `VALIDATION.md` untuk rincian 16 pengujian dan 66 simulasi yang telah dijalankan.
+Lihat `VALIDATION.md` untuk hasil validasi kode terbaru.

@@ -27,7 +27,8 @@ DEFAULT_GAMMA: float = 1.0 / 3.0   # headroom (RAM/CPU margin)
 # ---------------------------------------------------------------------------
 # Penalty Configuration
 #   PENALTY_WEIGHT (mu) -> bobot pelanggaran constraint [Apat et al., 2024], Eq.10-13.
-#   CLOUD_PENALTY_BASE  -> adaptive cloud-fallback penalty = NOVELTY (this work).
+#   CLOUD_PENALTY_BASE  -> adaptive cloud-fallback penalty = NOVELTY (this work); skala dengan
+#   tekanan fog = max(RAM, CPU demand / kapasitas).
 # ---------------------------------------------------------------------------
 PENALTY_WEIGHT: float = 1.0
 CLOUD_PENALTY_BASE: float = 0.15   # novelty (this work)
@@ -140,7 +141,8 @@ def build_problem(
             # (1500-3000), which silently disabled the CPU capacity constraint.
             inst_i = float(mod.get("instructions", 0.0))
             dl_ms = float(mod.get("deadline", 1e12))
-            service_cpu[idx] = (inst_i / dl_ms) if 0.0 < dl_ms < 1e12 else 0.0
+            # cpu_rate (inst/ms, = instructions x arrival rate) bila ada; jika tidak instructions/deadline.
+            service_cpu[idx] = float(mod["cpu_rate"]) if "cpu_rate" in mod else ((inst_i / dl_ms) if 0.0 < dl_ms < 1e12 else 0.0)
 
             msg_bytes = float(mod.get("bytes", 0.0))
             service_input_bytes[idx] = float(mod.get("input_bytes", msg_bytes))
@@ -356,9 +358,10 @@ def _compute_total_cost(
 
     # --- Constraint-Aware Penalties (Added to cost) ---
     if penalise_invalid:
-        fog_demand = sum(prob.service_ram.get(i, 0.0) for i, node in enumerate(chrom) if node != prob.cloud_id)
+        fog_ram = sum(prob.service_ram.get(i, 0.0) for i, node in enumerate(chrom) if node != prob.cloud_id)
+        fog_cpu = sum(prob.service_cpu.get(i, 0.0) for i, node in enumerate(chrom) if node != prob.cloud_id)
 
-        effective_cloud_penalty = cloud_coefficient(prob, fog_demand)
+        effective_cloud_penalty = cloud_coefficient(prob, fog_ram, fog_cpu)
 
         for i, node in enumerate(chrom):
             if node == prob.cloud_id:
@@ -454,8 +457,8 @@ def repair_chromosome(
     counts = {n: 0 for n in prob.candidate_nodes}
     repaired = []
 
-    def cloud_cost(demand, count):
-        return count * cloud_coefficient(prob,demand)
+    def cloud_cost(ram, cpu, count):
+        return count * cloud_coefficient(prob, ram, cpu)
 
     def score(i, node):
         proc, comm = _calc_times(i, node, prob)
@@ -468,8 +471,11 @@ def repair_chromosome(
         headroom_delta = (counts[node]+1)*after-counts[node]*before
         dl = prob.service_deadline[i]
         deadline = PENALTY_WEIGHT*max(0.0,(latency-dl)/dl) if dl>0 else 0.0
-        demand = sum(loads_ram[n] for n in prob.fog_nodes)
-        cloud_delta = cloud_cost(demand+(prob.service_ram[i] if node!=prob.cloud_id else 0.0),counts[prob.cloud_id]+int(node==prob.cloud_id))-cloud_cost(demand,counts[prob.cloud_id])
+        ram = sum(loads_ram[n] for n in prob.fog_nodes)
+        cpu = sum(loads_cpu[n] for n in prob.fog_nodes)
+        to_fog = node!=prob.cloud_id
+        cloud_delta = (cloud_cost(ram+(prob.service_ram[i] if to_fog else 0.0), cpu+(prob.service_cpu[i] if to_fog else 0.0), counts[prob.cloud_id]+int(not to_fog))
+                       -cloud_cost(ram, cpu, counts[prob.cloud_id]))
         return prob.alpha*lat_cost+prob.beta*hop_cost+prob.gamma*headroom_delta+deadline+cloud_delta
 
     for i, original in enumerate(chrom):
@@ -549,11 +555,14 @@ CLOUD_MODE = 'adaptive'
 INITIALIZATION = 'mixed'
 
 
-def cloud_coefficient(prob, fog_demand):
+def cloud_coefficient(prob, fog_ram_demand, fog_cpu_demand):
     if CLOUD_MODE == 'none': return 0.0
     if CLOUD_MODE == 'constant': return CLOUD_PENALTY_BASE
-    capacity=sum(prob.node_ram[n] for n in prob.fog_nodes)
-    return CLOUD_PENALTY_BASE*max(0.1,1.0-fog_demand/capacity) if capacity else CLOUD_PENALTY_BASE
+    ram_cap=sum(prob.node_ram[n] for n in prob.fog_nodes)
+    cpu_cap=sum(prob.node_ipt[n] for n in prob.fog_nodes)
+    if not ram_cap and not cpu_cap: return CLOUD_PENALTY_BASE
+    pressure=max(fog_ram_demand/ram_cap if ram_cap else 0.0, fog_cpu_demand/cpu_cap if cpu_cap else 0.0)
+    return CLOUD_PENALTY_BASE*max(0.1,1.0-pressure)
 
 from contextvars import ContextVar
 _active_budget = ContextVar('fitness_budget', default=None)

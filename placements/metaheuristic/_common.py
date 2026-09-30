@@ -564,6 +564,19 @@ def cloud_coefficient(prob, fog_ram_demand, fog_cpu_demand):
     pressure=max(fog_ram_demand/ram_cap if ram_cap else 0.0, fog_cpu_demand/cpu_cap if cpu_cap else 0.0)
     return CLOUD_PENALTY_BASE*max(0.1,1.0-pressure)
 
+def cloud_pressure_report(chrom, prob):
+    """Fog pressure and cloud coefficient of a final placement (for result logs)."""
+    fog = [i for i, n in enumerate(chrom) if n != prob.cloud_id]
+    ram = sum(prob.service_ram.get(i, 0.0) for i in fog)
+    cpu = sum(prob.service_cpu.get(i, 0.0) for i in fog)
+    ram_cap = sum(prob.node_ram[n] for n in prob.fog_nodes)
+    cpu_cap = sum(prob.node_ipt[n] for n in prob.fog_nodes)
+    return dict(cloud_mode=CLOUD_MODE, cloud_coefficient=cloud_coefficient(prob, ram, cpu),
+                ram_pressure=ram / ram_cap if ram_cap else None, cpu_pressure=cpu / cpu_cap if cpu_cap else None,
+                fog_ram_reserved=ram, fog_ram_capacity=ram_cap, fog_cpu_reserved=cpu, fog_cpu_capacity=cpu_cap,
+                services=len(chrom), cloud_services=len(chrom) - len(fog))
+
+
 from contextvars import ContextVar
 _active_budget = ContextVar('fitness_budget', default=None)
 

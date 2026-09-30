@@ -20,6 +20,16 @@ class CloudCoefficientTests(unittest.TestCase):
         self.assertAlmostEqual(common.cloud_coefficient(self.prob, 1000, 0), common.CLOUD_PENALTY_BASE * 0.5)
 
 
+class CloudReportTests(unittest.TestCase):
+    def test_report_uses_only_fog_placed_services(self):
+        prob = SimpleNamespace(fog_nodes=[0, 1], cloud_id=2, node_ram={0: 1000, 1: 1000}, node_ipt={0: 1000, 1: 1000},
+                               service_ram={0: 100, 1: 200}, service_cpu={0: 500, 1: 900})
+        rep = common.cloud_pressure_report([0, 2], prob)
+        self.assertEqual(rep["cloud_services"], 1)
+        self.assertAlmostEqual(rep["cpu_pressure"], 500 / 2000)
+        self.assertAlmostEqual(rep["cloud_coefficient"], common.cloud_coefficient(prob, 100, 500))
+
+
 class DeadlineDesignTests(unittest.TestCase):
     def test_coupled_deadline_shrinks_and_cpu_rate_matches_reservation(self):
         base = generate_applications(CAMS, 1, 1.0, 3)

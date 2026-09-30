@@ -33,12 +33,14 @@ def optimize(name,topology,apps,users,seed,budget=3000,weights=(1/3,1/3,1/3),clo
         if tracker.best_chrom is None:raise RuntimeError('No evaluated solution')
         if not (common.evaluate_ram_valid(tracker.best_chrom,tracker.problem) and common.evaluate_cpu_valid(tracker.best_chrom,tracker.problem)):
             raise RuntimeError('Placement violates static admission constraints')
+        cloud_report=common.cloud_pressure_report(tracker.best_chrom,tracker.problem)
         return common.to_allocation(tracker.best_chrom,tracker.problem),dict(
             execution_time_sec=time.perf_counter()-started,fitness_evaluations=tracker.evaluations,
             evaluation_limit=tracker.limit,best_fitness=tracker.best_cost,history=tracker.history,
             repair_calls=tracker.repair_calls,repaired_genes=tracker.repaired_genes,
             initialization=common.INITIALIZATION,cloud_mode=cloud_mode,
-            capacity_model='original instructions/deadline reservation; no shared CPU claim',
+            cloud_pressure=cloud_report,
+            capacity_model='static cpu_rate reservation (instructions/deadline if absent); no shared CPU claim',
             variant='project-specific discrete adaptation' if name in ('PSO','GWO','WOA','HHO') else name)
     finally:
         common.CLOUD_MODE,common.INITIALIZATION=old

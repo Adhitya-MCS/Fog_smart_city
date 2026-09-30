@@ -154,7 +154,8 @@ menggabungkan hasil beberapa folder atau mengklaim signifikansi ablasi.
 - Root `manifest.json`: parameter, versi dependency, hash lapisan eksperimen dan YAFS.
 - `apps_W/run_R/scenario/`: konfigurasi kanonis dan allocation tiap strategi.
 - Tiap strategi: trace YAFS asli, verified `emissions.json`, `source_schedule.json`,
-  metadata simulasi, allocation yang dipakai, `time_log.json`, dan `metrics.json`.
+  metadata simulasi, allocation yang dipakai, `time_log.json`, dan `metrics.json`. `time_log.json` memuat `cloud_pressure`:
+  koefisien cloud, tekanan RAM/CPU fog, dan jumlah layanan di cloud pada placement final.
 - `analysis/run_metrics.json`, `summary.csv`, `pairwise_statistics.json`:
   ringkasan dan perbandingan statistik.
 

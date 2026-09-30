@@ -8,14 +8,12 @@ import json
 import sys
 import argparse
 from pathlib import Path
-import logging.config
 
 # Ensure project root on path for imports when run as script
 _project_root = Path(__file__).resolve().parent.parent
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-import networkx as nx
 
 from yafs.core import Sim
 from yafs.application import create_applications_from_json
@@ -183,7 +181,7 @@ def run_simulation(
     print("\nCreating topology...")
     t = Topology()
     t.load(engine_topology(topology_data))
-    print(f"  ✓ Topology loaded")
+    print("  ✓ Topology loaded")
     
     # Create applications
     print("\nCreating applications...")
@@ -199,7 +197,7 @@ def run_simulation(
     # Create placement
     print(f"\nSetting up placement: {placement_name}...")
     placement = JSONPlacement(name=placement_name, json=placement_data)
-    print(f"  ✓ Placement configured")
+    print("  ✓ Placement configured")
     
     # Create routing
     print("\nSetting up routing...")
@@ -210,7 +208,7 @@ def run_simulation(
     print("\nInitializing simulator...")
     result_file = str(results_dir / "sim_trace")
     s = Sim(t, default_results_path=result_file)
-    print(f"  ✓ Simulator initialized")
+    print("  ✓ Simulator initialized")
     
     # Direct BOT request/response only. This does not alter Application or Sim.
     seen_sources=set()
@@ -254,8 +252,8 @@ def run_simulation(
     print("Simulation Complete!")
     print("=" * 60)
     print(f"\nResults saved to: {results_dir}/")
-    print(f"  - sim_trace.csv (module processing)")
-    print(f"  - sim_trace_link.csv (network transmission)")
+    print("  - sim_trace.csv (module processing)")
+    print("  - sim_trace_link.csv (network transmission)")
     
     return results_dir
 

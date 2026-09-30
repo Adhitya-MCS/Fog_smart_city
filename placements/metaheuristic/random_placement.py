@@ -6,14 +6,9 @@ Baseline acak (random node + cek resource + fallback cloud): [Pakpahan et al., 2
 """
 from __future__ import annotations
 import random
-from typing import Optional
 
 from placements.placement import Placement
-from placements.metaheuristic._common import (
-    PlacementProblem, ServiceNormBounds, build_problem,
-    precompute_normalization_bounds, compute_total_cost,
-    random_chrom, repair_chromosome, to_allocation,
-)
+from placements.metaheuristic._common import build_problem, precompute_normalization_bounds, compute_total_cost, random_chrom, repair_chromosome, to_allocation
 
 class RandomPlacement(Placement):
     def __init__(self, iterations=50, alpha=1.0 / 3.0, beta=1.0 / 3.0, gamma=1.0 / 3.0, seed=None):

@@ -24,6 +24,18 @@ def arrival_times(mean_ms, seed, horizon):
         times.append(now)
 
 
+def periodic_times(start_ms, period_ms, horizon):
+    if not (math.isfinite(period_ms) and period_ms>0 and math.isfinite(start_ms) and start_ms>=0):
+        raise ValueError('Period must be positive and start non-negative')
+    times=[]
+    k=0
+    while True:
+        t=max(1,int(round(start_ms+k*period_ms)))
+        if t>=horizon:return times
+        if not times or t>times[-1]:times.append(t)
+        k+=1
+
+
 class ReplayDistribution(Distribution):
     def __init__(self, sim, times, descriptor, ledger, observation_end):
         super().__init__(name='IndependentReplay')
@@ -69,7 +81,8 @@ class JSONPopulation(Population):
             if str(item['app'])!=str(app_name):continue
             msg=sim.apps[app_name].get_message(item['message'])
             seed=source_seed(self.seed,app_name,item['message'],item['id_resource'])
-            times=arrival_times(float(item['lambda']),seed,self.emission_end)
+            if 'period_ms' in item:times=periodic_times(float(item['start_ms']),float(item['period_ms']),self.emission_end)
+            else:times=arrival_times(float(item['lambda']),seed,self.emission_end)
             descriptor=dict(app=str(app_name),module=msg.dst,message=msg.name,
                             source_node=item['id_resource'],source_seed=seed)
             dist=ReplayDistribution(sim,times,descriptor,self.ledger,self.observation_end)

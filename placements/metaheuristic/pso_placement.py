@@ -4,14 +4,9 @@ Algoritma diterapkan ke fog service placement: [Apat et al., 2024] (FSPPSO).
 """
 from __future__ import annotations
 import random
-from typing import List
 
 from placements.placement import Placement
-from placements.metaheuristic._common import (
-    PlacementProblem, ServiceNormBounds, build_problem,
-    precompute_normalization_bounds, compute_total_cost,
-    greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation,
-)
+from placements.metaheuristic._common import build_problem, precompute_normalization_bounds, compute_total_cost, greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation
 
 class PSOPlacement(Placement):
     def __init__(self, pop_size=30, iterations=100, w_max=0.9, w_min=0.4, c1=1.5, c2=1.5, mutation_prob=0.05,

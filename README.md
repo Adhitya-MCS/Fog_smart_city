@@ -34,7 +34,7 @@ Uji kecil:
 
 ```bash
 python -B -m runner.run_experiment --output results/my-smoke \
-  --app-counts 2 --topology-size 8 --runs 5 --budget 70 \
+  --design app-layering --manifest data/cameras_SYNTHETIC.csv --runs 5 --budget 70 \
   --duration 500 --drain-time 1000
 python -B -m analysis.constraint_analysis results/my-smoke
 ```
@@ -43,8 +43,8 @@ Konfigurasi eksperimen utama:
 
 ```bash
 python -B -m runner.run_experiment --output results/main-v1 \
-  --app-counts 25,50,75,100,125,150,175,200,225,250 \
-  --topology-size 100 --topology-seed 42 --runs 30 --budget 3000 \
+  --design app-layering \
+  --manifest data/cameras_SYNTHETIC.csv --topology-seed 42 --runs 30 --budget 3000 \
   --duration 10000 --drain-time 10000 > main-v1.log 2>&1
 python -B -m analysis.constraint_analysis results/main-v1
 ```
@@ -109,15 +109,15 @@ Contoh pada 100 aplikasi:
 
 ```bash
 python -B -m runner.run_experiment --output results/full \
-  --app-counts 100 --runs 30 --budget 3000
+  --design app-layering --runs 30 --budget 3000
 python -B -m runner.run_experiment --output results/constant-cloud \
-  --app-counts 100 --runs 30 --budget 3000 --cloud-mode constant
+  --design app-layering --runs 30 --budget 3000 --cloud-mode constant
 python -B -m runner.run_experiment --output results/no-cloud \
-  --app-counts 100 --runs 30 --budget 3000 --cloud-mode none
+  --design app-layering --runs 30 --budget 3000 --cloud-mode none
 python -B -m runner.run_experiment --output results/no-headroom \
-  --app-counts 100 --runs 30 --budget 3000 --alpha 0.5 --beta 0.5 --gamma 0
+  --design app-layering --runs 30 --budget 3000 --alpha 0.5 --beta 0.5 --gamma 0
 python -B -m runner.run_experiment --output results/random-init \
-  --app-counts 100 --runs 30 --budget 3000 --initialization random
+  --design app-layering --runs 30 --budget 3000 --initialization random
 ```
 
 Metode lengkap: bobot 1/3 masing-masing, cloud penalty adaptif, initialization mixed.

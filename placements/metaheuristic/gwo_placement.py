@@ -5,14 +5,9 @@ Model placement (objective/constraint): [Apat et al., 2024]. Perluasan (this wor
 """
 from __future__ import annotations
 import random
-from typing import List
 
 from placements.placement import Placement
-from placements.metaheuristic._common import (
-    PlacementProblem, ServiceNormBounds, build_problem,
-    precompute_normalization_bounds, compute_total_cost,
-    greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation,
-)
+from placements.metaheuristic._common import build_problem, precompute_normalization_bounds, compute_total_cost, greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation
 
 class GWOPlacement(Placement):
     def __init__(self, pop_size=30, iterations=100, alpha=1.0 / 3.0, beta=1.0 / 3.0, gamma=1.0 / 3.0, seed=None):

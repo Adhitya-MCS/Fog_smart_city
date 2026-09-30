@@ -5,14 +5,9 @@ Algoritma & encoding (list integer module->node, crossover/mutation/tournament):
 """
 from __future__ import annotations
 import random
-from typing import List, Optional
 
 from placements.placement import Placement
-from placements.metaheuristic._common import (
-    PlacementProblem, ServiceNormBounds, build_problem,
-    precompute_normalization_bounds, compute_total_cost,
-    greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation,
-)
+from placements.metaheuristic._common import build_problem, precompute_normalization_bounds, compute_total_cost, greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation
 
 class GAPlacement(Placement):
     def __init__(self, pop_size=30, generations=100, cx_rate=0.8, tourn_k=3,

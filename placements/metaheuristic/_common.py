@@ -13,21 +13,6 @@ import math
 from config.units import physical_graph
 
 # ---------------------------------------------------------------------------
-# Energy Model Parameters -- DIAGNOSTIC ONLY as of 2026-09-07 (see module docstring).
-# NOT used by the active fitness/_calc_times pipeline below anymore; kept here for
-# reference. The energy metric actually reported in results is computed independently
-# in analysis/constraint_analysis.py from real simulation traces, using its own copies
-# of these same three constants (kept in sync manually).
-# Energy MODEL (idle + transmission + processing) -> [Apat et al., 2024], Eq.15.
-# ---------------------------------------------------------------------------
-P_BASE_W: float = 10.0      # assumption (this work); scale-only normalization constant
-P_IDLE_RATIO: float = 0.22  # [Alqahtani et al., 2022], "fog cell 1" (energy-efficient
-                            # class): 54.1 W idle / 243 W max = 0.223. Was 0.1
-                            # (uncited assumption) prior to this correction.
-P_TRANS_W: float = 2.0      # [Kaup, Gottschling & Hausheer, 2014] (PowerPi), Sec. IV-B:
-                            # USB WiFi dongle draws 2.0 W, ~2x the host platform's power.
-
-# ---------------------------------------------------------------------------
 # Default Weights -> weighted-sum TRI-objective [Apat et al., 2024], Eq.5 form
 # (alpha+beta+gamma=1). Equal split (Apat's own a=b=g=1/3 convention), applied to the
 # three QoS-native components: latency, hop-count, headroom (this work's substitution
@@ -96,16 +81,6 @@ class ServiceNormBounds:
     lat_min: float; lat_max: float   # latency (t_proc+t_comm), seconds
     hop_min: float; hop_max: float   # hop count
 
-
-# ---------------------------------------------------------------------------
-# Power derivation -- DIAGNOSTIC ONLY, not called by the active fitness pipeline
-# (kept for reference / possible future re-introduction; see module docstring).
-# ---------------------------------------------------------------------------
-def _compute_power(node: int, prob: PlacementProblem) -> Tuple[float, float]:
-    ipt = prob.node_ipt.get(node, 1.0)
-    p_pro = P_BASE_W * (ipt / prob.ipt_max) if prob.ipt_max > 0 else P_BASE_W
-    p_idle = P_IDLE_RATIO * p_pro
-    return p_idle, p_pro
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +259,6 @@ def _calc_times(i: int, node: int, prob: PlacementProblem) -> Tuple[float, float
     if bw_down > 0 and bw_up > 0:
         t_comm_ms = (in_bytes / bw_down) + (out_bytes / bw_up)
 
-    hops = prob.hop_dist.get(comm_src_node, {}).get(node, 0)
     t_comm_ms += prob.path_propagation_ms[comm_src_node][node] + prob.path_propagation_ms[node][comm_src_node]
 
     # Convert ms to seconds for energy consistency
@@ -382,11 +356,8 @@ def _compute_total_cost(
 
     # --- Constraint-Aware Penalties (Added to cost) ---
     if penalise_invalid:
-        total_fog_capacity = sum(prob.node_ram.get(n, 0.0) for n in prob.fog_nodes)
         fog_demand = sum(prob.service_ram.get(i, 0.0) for i, node in enumerate(chrom) if node != prob.cloud_id)
-        fog_load_ratio = fog_demand / total_fog_capacity if total_fog_capacity > 0 else 0.0
 
-        dynamic_multiplier = max(0.1, 1.0 - fog_load_ratio)
         effective_cloud_penalty = cloud_coefficient(prob, fog_demand)
 
         for i, node in enumerate(chrom):
@@ -481,7 +452,6 @@ def repair_chromosome(
     loads_ram = {n: 0.0 for n in prob.candidate_nodes}
     loads_cpu = {n: 0.0 for n in prob.candidate_nodes}
     counts = {n: 0 for n in prob.candidate_nodes}
-    fog_capacity = sum(prob.node_ram[n] for n in prob.fog_nodes)
     repaired = []
 
     def cloud_cost(demand, count):
@@ -528,45 +498,6 @@ def to_allocation(chrom: List[int], prob: PlacementProblem):
     for act_name, app_id, src_node in prob.actuators:
         alloc.append({"module_name": act_name, "app": str(app_id), "id_resource": src_node})
     return alloc
-
-
-# ---------------------------------------------------------------------------
-# Diagnostic Metrics
-# ---------------------------------------------------------------------------
-def calc_feasibility_ratio(chrom: List[int], prob: PlacementProblem) -> float:
-    ram_ok = evaluate_ram_valid(chrom, prob)
-    cpu_ok = evaluate_cpu_valid(chrom, prob)
-    dl_ok = evaluate_deadline_valid(chrom, prob)
-    return float(ram_ok and cpu_ok and dl_ok)
-
-def calc_constraint_violation_index(chrom: List[int], prob: PlacementProblem) -> float:
-    total_violation = 0.0
-    node_ram_load = {}
-    for i, node in enumerate(chrom):
-        if node != prob.cloud_id: node_ram_load[node] = node_ram_load.get(node, 0.0) + prob.service_ram.get(i, 0.0)
-    for n, load in node_ram_load.items():
-        cap = prob.node_ram.get(n, 0.0)
-        if load > cap and cap > 0: total_violation += (load - cap) / cap
-
-    node_cpu_load = {}
-    for i, node in enumerate(chrom):
-        if node != prob.cloud_id: node_cpu_load[node] = node_cpu_load.get(node, 0.0) + prob.service_cpu.get(i, 0.0)
-    for n, load in node_cpu_load.items():
-        cap = prob.node_ipt.get(n, 0.0)
-        if load > cap and cap > 0: total_violation += (load - cap) / cap
-
-    for i, node in enumerate(chrom):
-        t_proc, t_comm = _calc_times(i, node, prob)
-        total_t = t_proc + t_comm
-        dl = prob.service_deadline.get(i, 1e12)
-        if total_t > dl and dl > 0: total_violation += (total_t - dl) / dl
-
-    return total_violation
-
-def calc_cloud_offload_ratio(chrom: List[int], prob: PlacementProblem) -> float:
-    if not chrom: return 0.0
-    cloud_count = sum(1 for node in chrom if node == prob.cloud_id)
-    return cloud_count / len(chrom)
 
 
 # ---------------------------------------------------------------------------

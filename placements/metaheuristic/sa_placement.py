@@ -8,11 +8,7 @@ import math
 from typing import List
 
 from placements.placement import Placement
-from placements.metaheuristic._common import (
-    PlacementProblem, ServiceNormBounds, build_problem,
-    precompute_normalization_bounds, compute_total_cost,
-    greedy_seed_chrom, random_chrom, repair_chromosome, to_allocation,
-)
+from placements.metaheuristic._common import PlacementProblem, build_problem, precompute_normalization_bounds, compute_total_cost, greedy_seed_chrom, repair_chromosome, to_allocation
 
 class SAPlacement(Placement):
     def __init__(

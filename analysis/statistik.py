@@ -2,11 +2,8 @@
 
 Run: python -m analysis.statistics PATH_TO_RESULTS
 """
-import argparse
 import itertools
-import json
 import math
-from pathlib import Path
 import numpy as np
 from scipy.stats import rankdata, wilcoxon
 

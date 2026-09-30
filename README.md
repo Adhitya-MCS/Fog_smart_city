@@ -34,7 +34,7 @@ Uji kecil:
 
 ```bash
 python -B -m runner.run_experiment --output results/my-smoke \
-  --design app-layering --manifest data/cameras_SYNTHETIC.csv --runs 5 --budget 70 \
+  --manifest data/cameras_SYNTHETIC.csv --runs 5 --budget 70 \
   --duration 500 --drain-time 1000
 python -B -m analysis.constraint_analysis results/my-smoke
 ```
@@ -43,7 +43,6 @@ Konfigurasi eksperimen utama:
 
 ```bash
 python -B -m runner.run_experiment --output results/main-v1 \
-  --design app-layering \
   --manifest data/cameras_SYNTHETIC.csv --topology-seed 42 --runs 30 --budget 3000 \
   --duration 10000 --drain-time 10000 > main-v1.log 2>&1
 python -B -m analysis.constraint_analysis results/main-v1
@@ -68,7 +67,7 @@ Hanya native `hop_aware` routing dan BOT request–response yang divalidasi.
 | Censoring | Request unfinished, deadline missed, deadline pending, dan komputasi dengan projected finish melewati cutoff dibedakan |
 | Repair | Skor marginal lokal mencakup deadline, cloud penalty, dan perubahan headroom pada service yang sudah dialokasikan |
 | Fairness | Budget maksimum fitness evaluations yang sama; actual count, runtime, convergence history, dan aktivitas repair disimpan |
-| Baseline | Greedy-only ditambahkan; Random memakai best-of-budget, bukan otomatis best-of-50 |
+| Baseline | Greedy (kapasitas: IPT tertinggi), Nearest (hop terdekat ke sumber, lalu latensi), MinLatency (estimasi latensi terendah), semuanya dengan pengecekan RAM/CPU dan fallback cloud; Random memakai best-of-budget, bukan otomatis best-of-50 |
 | Statistik | Pairing berdasarkan instance ID, signed rank-biserial yang menangani zero differences, dan koreksi Holm per metrik |
 
 Yang **tidak berubah**: kode YAFS, native per-module CPU execution, native link
@@ -102,11 +101,11 @@ reproduksi tersendiri dengan satuan dan input yang dinyatakan eksplisit.
 
 ## Desain stress test (`config/users_params.py`)
 
-| Desain | Level | Deadline |
-| --- | --- | --- |
-| `app-layering` | 1-4 lapisan analitik, fps nominal | 1000/fps |
-| `fps-intensity` | 4 lapisan, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
-| `fps-fixed-deadline` | 4 lapisan, fps x 0,5 ... 6 | tetap = interval fps dasar |
+| Desain | Peran | Level | Deadline |
+| --- | --- | --- | --- |
+| `fps-fixed-deadline` | **eksperimen utama** (default) | 4 lapisan, fps x 0,5 ... 6 | tetap = interval fps dasar |
+| `fps-intensity` | tambahan: "selesai sebelum frame berikutnya" | 4 lapisan, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
+| `app-layering` | tambahan: pertambahan jenis layanan | 1-4 lapisan, fps nominal | 1000/fps |
 
 `fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban
 sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
@@ -117,19 +116,19 @@ Gunakan topology, master seed, workload, run, horizon, dan budget identik.
 Nama folder output dan pilihan komponen saja yang berubah. Seluruh varian memakai
 YAFS yang sama dan diverifikasi sebelum/sesudah eksperimen.
 
-Contoh pada 100 aplikasi:
+Contoh pada desain utama (`fps-fixed-deadline`):
 
 ```bash
 python -B -m runner.run_experiment --output results/full \
-  --design app-layering --runs 30 --budget 3000
+  --manifest data/cameras_SYNTHETIC.csv --runs 30 --budget 3000
 python -B -m runner.run_experiment --output results/constant-cloud \
-  --design app-layering --runs 30 --budget 3000 --cloud-mode constant
+  --manifest data/cameras_SYNTHETIC.csv --runs 30 --budget 3000 --cloud-mode constant
 python -B -m runner.run_experiment --output results/no-cloud \
-  --design app-layering --runs 30 --budget 3000 --cloud-mode none
+  --manifest data/cameras_SYNTHETIC.csv --runs 30 --budget 3000 --cloud-mode none
 python -B -m runner.run_experiment --output results/no-headroom \
-  --design app-layering --runs 30 --budget 3000 --alpha 0.5 --beta 0.5 --gamma 0
+  --manifest data/cameras_SYNTHETIC.csv --runs 30 --budget 3000 --alpha 0.5 --beta 0.5 --gamma 0
 python -B -m runner.run_experiment --output results/random-init \
-  --design app-layering --runs 30 --budget 3000 --initialization random
+  --manifest data/cameras_SYNTHETIC.csv --runs 30 --budget 3000 --initialization random
 ```
 
 Metode lengkap: bobot 1/3 masing-masing, cloud penalty adaptif, initialization mixed.

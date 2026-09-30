@@ -8,19 +8,22 @@ STRATEGIES=dict(GA=GAPlacement,PSO=PSOPlacement,GWO=GWOPlacement,WOA=WOAPlacemen
                 HHO=HHOPlacement,SA=SAPlacement,Random=RandomPlacement)
 
 
+BASELINES=dict(Greedy=common.greedy_seed_chrom,Nearest=common.nearest_feasible_chrom,MinLatency=common.min_latency_chrom)
+
+
 def optimize(name,topology,apps,users,seed,budget=3000,weights=(1/3,1/3,1/3),cloud_mode='adaptive',initialization='mixed'):
     if budget<1 or cloud_mode not in ('adaptive','constant','none') or initialization not in ('mixed','random'):
         raise ValueError('Invalid search configuration')
     old=(common.CLOUD_MODE,common.INITIALIZATION)
     common.CLOUD_MODE=cloud_mode
-    common.INITIALIZATION='mixed' if name=='Greedy' else initialization
+    common.INITIALIZATION='mixed' if name in BASELINES else initialization
     started=time.perf_counter()
     try:
-        with common.EvaluationBudget(1 if name=='Greedy' else budget) as tracker:
-            if name=='Greedy':
+        with common.EvaluationBudget(1 if name in BASELINES else budget) as tracker:
+            if name in BASELINES:
                 prob=common.build_problem(topology,apps,users,*weights)
                 bounds=common.precompute_normalization_bounds(prob)
-                common.compute_total_cost(common.greedy_seed_chrom(prob),prob,bounds)
+                common.compute_total_cost(BASELINES[name](prob),prob,bounds)
             else:
                 kwargs=dict(seed=seed,alpha=weights[0],beta=weights[1],gamma=weights[2])
                 if name=='Random':kwargs.update(iterations=budget)

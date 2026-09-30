@@ -133,7 +133,7 @@ class YAFSProtocolTests(unittest.TestCase):
 
     def test_budgets_and_capacity(self):
         topology,apps,users,_=fixture(tasks=2)
-        for name in ['GA','PSO','GWO','WOA','HHO','SA','Random','Greedy']:
+        for name in ['GA','PSO','GWO','WOA','HHO','SA','Random','Greedy','Nearest','MinLatency']:
             with self.subTest(name=name):
                 allocation,info=optimize(name,topology,apps,users,3,budget=70)
                 self.assertGreater(info['fitness_evaluations'],0)

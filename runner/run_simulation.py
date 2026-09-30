@@ -26,7 +26,7 @@ import math
 from runner.path_routing import create_routing_strategy
 
 
-AVAILABLE_PLACEMENTS = [n+'Placement' for n in ['Random','GA','PSO','GWO','WOA','HHO','SA','Greedy']]
+AVAILABLE_PLACEMENTS = [n+'Placement' for n in ['Random','GA','PSO','GWO','WOA','HHO','SA','Greedy','Nearest','MinLatency']]
 
 
 def load_scenario(scenarios_dir: Path):

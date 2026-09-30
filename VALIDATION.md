@@ -5,8 +5,8 @@ Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 Septe
 
 ## Pemeriksaan yang lulus
 
-- **23 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 7 pengujian model
+- **25 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
+  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 9 pengujian model
   workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
   runner yang membuat deadline tetap antarlevel). Cakupan protokol:
   - adapter bandwidth tidak mengubah konfigurasi kanonis; double conversion ditolak,
@@ -41,9 +41,10 @@ Diuji dengan manifest sintetis `data/cameras_SYNTHETIC.csv` (46 kamera, 16 persi
 | Smoke B | `app-layering` (4 level), 1 run, 8 algoritma, budget 30, emisi 1000 ms, drain 1000 ms | 32 |
 | Smoke C | `fps-intensity` (7 level), 1 run, Greedy/Random/GA, budget 60, emisi 2000 ms, drain 2000 ms | 21 |
 | Smoke D | `fps-fixed-deadline` (7 level), konfigurasi sama dengan Smoke C | 21 |
+| Smoke E | `fps-fixed-deadline` (7 level), 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms | 35 |
 
-Total 86 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil dijalankan
-pada keempat batch. Yang diperiksa:
+Total 121 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil dijalankan
+pada kelima batch. Yang diperiksa:
 
 - Emisi masuk akal terhadap perhitungan kasar (46 kamera x ~10 fps x 2 s x jumlah lapisan):
   emitted 905, 1852, 2748, 3616 untuk 1-4 lapisan pada Smoke A.
@@ -79,6 +80,12 @@ link, sehingga ia adalah batas bawah tanpa antrean. Skrip pembanding tidak ada d
   1000/fps dan 0,22 pada deadline tetap; deadline kamera tetap 116,185 ms pada semua level
   desain deadline tetap), sehingga penurunan terutama berasal dari beban,
   bukan dari pengetatan deadline. Bukan bukti peringkat algoritma.
+- **Baseline Nearest dan MinLatency** (hop terdekat / estimasi latensi terendah yang muat) lolos uji
+  admisi RAM/CPU dan tidak lebih jauh/lambat dari Greedy pada skenario uji. Pada Smoke E
+  (budget metaheuristik hanya 60), keduanya mengungguli Greedy, dan pada fps x2-x3 juga GA dan
+  Random (mis. x2: on-time 1,000 pada keduanya vs 0,550 GA, 0,468 Random, 0,254 Greedy).
+  Ini menunjukkan heuristik sederhana yang sadar sumber adalah pembanding yang kuat; belum ada
+  kesimpulan peringkat karena 1 run, budget kecil, dan manifest sintetis.
 - **`time_log.json` kini mencatat `cloud_pressure`** (koefisien aktual, tekanan RAM/CPU fog, layanan di
   cloud) untuk placement final; diverifikasi pada smoke run (mis. fps x6, Greedy: koefisien 0,0150,
   tekanan CPU 0,974, 100 dari 184 layanan di cloud).

@@ -435,6 +435,36 @@ def greedy_seed_chrom(prob: PlacementProblem) -> List[int]:
         chrom.append(chosen)
     return chrom
 
+def _feasible_first_chrom(prob: PlacementProblem, key) -> List[int]:
+    """Service by service: the fog node that fits (residual RAM and CPU) with the smallest key(i, node); cloud if none fits."""
+    if not prob.services or not prob.fog_nodes or prob.cloud_id is None: return []
+    left_ram = {n: float(prob.node_ram.get(n, 0.0)) for n in prob.fog_nodes}
+    left_cpu = {n: float(prob.node_ipt.get(n, 0.0)) for n in prob.fog_nodes}
+    chrom: List[int] = []
+    for i in range(len(prob.services)):
+        ram = float(prob.service_ram.get(i, 1.0))
+        cpu = float(prob.service_cpu.get(i, 1.0))
+        fits = [n for n in prob.fog_nodes if left_ram[n] >= ram and left_cpu[n] >= cpu]
+        if fits:
+            chosen = min(fits, key=lambda n: (key(i, n), n))
+            left_ram[chosen] -= ram
+            left_cpu[chosen] -= cpu
+        else:
+            chosen = prob.cloud_id
+        chrom.append(chosen)
+    return chrom
+
+
+def nearest_feasible_chrom(prob: PlacementProblem) -> List[int]:
+    """Baseline: fewest hops from the service's source, ties by estimated latency."""
+    return _feasible_first_chrom(prob, lambda i, n: (_get_hops(i, n, prob), sum(_calc_times(i, n, prob))))
+
+
+def min_latency_chrom(prob: PlacementProblem) -> List[int]:
+    """Baseline: lowest estimated latency (t_proc + t_comm), ties by hops."""
+    return _feasible_first_chrom(prob, lambda i, n: (sum(_calc_times(i, n, prob)), _get_hops(i, n, prob)))
+
+
 def random_chrom(prob: PlacementProblem) -> List[int]:
     if not prob.services or not prob.candidate_nodes: return []
     return [random.choice(prob.candidate_nodes) for _ in range(len(prob.services))]

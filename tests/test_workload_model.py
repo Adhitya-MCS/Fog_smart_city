@@ -30,6 +30,30 @@ class CloudReportTests(unittest.TestCase):
         self.assertAlmostEqual(rep["cloud_coefficient"], common.cloud_coefficient(prob, 100, 500))
 
 
+class BaselineTests(unittest.TestCase):
+    def setUp(self):
+        from generator.generate_scenario import generate_users
+        from generator.hierarchical_topology import generate_hierarchical_topology, load_cameras
+        cams = load_cameras("data/cameras_SYNTHETIC.csv")
+        topo, c2l1 = generate_hierarchical_topology(cams, 42)
+        apps = generate_applications(cams, 2, 1.0, 5)
+        self.prob = common.build_problem(topo, apps, generate_users(apps, c2l1, 5))
+
+    def test_baselines_are_admissible(self):
+        for fn in (common.greedy_seed_chrom, common.nearest_feasible_chrom, common.min_latency_chrom):
+            chrom = fn(self.prob)
+            self.assertEqual(len(chrom), len(self.prob.services))
+            self.assertTrue(common.evaluate_ram_valid(chrom, self.prob))
+            self.assertTrue(common.evaluate_cpu_valid(chrom, self.prob))
+
+    def test_source_aware_baselines_stay_closer_than_greedy(self):
+        hops = lambda ch: sum(common._get_hops(i, n, self.prob) for i, n in enumerate(ch))
+        lat = lambda ch: sum(sum(common._calc_times(i, n, self.prob)) for i, n in enumerate(ch))
+        greedy = common.greedy_seed_chrom(self.prob)
+        self.assertLessEqual(hops(common.nearest_feasible_chrom(self.prob)), hops(greedy))
+        self.assertLessEqual(lat(common.min_latency_chrom(self.prob)), lat(greedy))
+
+
 class DeadlineDesignTests(unittest.TestCase):
     def test_coupled_deadline_shrinks_and_cpu_rate_matches_reservation(self):
         base = generate_applications(CAMS, 1, 1.0, 3)

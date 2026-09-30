@@ -14,7 +14,7 @@ from config.users_params import DESIGNS,level_label
 from generator.generate_scenario import generate_applications,generate_users
 from generator.hierarchical_topology import generate_hierarchical_topology,load_cameras
 from runner.run_simulation import run_simulation
-from runner.search import optimize,STRATEGIES
+from runner.search import optimize,STRATEGIES,BASELINES
 from runner.integrity import verify_yafs
 from analysis.constraint_analysis import compute_metrics_for_trace
 
@@ -35,12 +35,12 @@ def write_json(path,value):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True,help='New result/scenario directory; never overwrite')
-    p.add_argument('--design',choices=sorted(DESIGNS),default='app-layering',help='Stress-test levels on the frozen topology')
+    p.add_argument('--design',choices=sorted(DESIGNS),default='fps-fixed-deadline',help='Stress-test levels on the frozen topology (main: fps-fixed-deadline)')
     p.add_argument('--manifest',type=Path,required=True,help='Camera manifest CSV (cam_id,intersection_id,zone_id,lat,lon)')
     p.add_argument('--topology-seed',type=int,default=42)
     p.add_argument('--seed',type=int,default=20260909)
     p.add_argument('--runs',type=int,default=30)
-    p.add_argument('--algorithms',default='Greedy,GA,PSO,GWO,WOA,HHO,SA,Random')
+    p.add_argument('--algorithms',default='Greedy,Nearest,MinLatency,GA,PSO,GWO,WOA,HHO,SA,Random')
     p.add_argument('--budget',type=int,default=3000)
     p.add_argument('--duration',type=float,default=10000,help='Emission window, ms')
     p.add_argument('--drain-time',type=float,default=10000)
@@ -53,7 +53,7 @@ def main():
     levels=DESIGNS[args.design]
     algorithms=args.algorithms.split(',')
     if len(set(algorithms))!=len(algorithms):p.error('Duplicate algorithm')
-    if not set(algorithms)<=set(['Greedy',*STRATEGIES]):p.error('Unknown algorithm')
+    if not set(algorithms)<=set([*BASELINES,*STRATEGIES]):p.error('Unknown algorithm')
     weights=(args.alpha,args.beta,args.gamma)
     if args.runs<1 or args.budget<1:p.error('Invalid size, runs, or budget')
     if any(not math.isfinite(x) for x in [*weights,args.duration,args.drain_time]) or min(weights)<0 or sum(weights)<=0 or args.duration<=0 or args.drain_time<0:p.error('Invalid weights or observation windows')

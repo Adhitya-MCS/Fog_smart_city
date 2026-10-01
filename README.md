@@ -103,9 +103,10 @@ reproduksi tersendiri dengan satuan dan input yang dinyatakan eksplisit.
 
 | Desain | Peran | Level | Deadline |
 | --- | --- | --- | --- |
-| `fps-fixed-deadline` | **eksperimen utama** (default) | 4 lapisan, fps x 0,5 ... 6 | tetap = interval fps dasar |
-| `fps-intensity` | tambahan: "selesai sebelum frame berikutnya" | 4 lapisan, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
-| `app-layering` | tambahan: pertambahan jenis layanan | 1-4 lapisan, fps nominal | 1000/fps |
+| `fps-fixed-deadline` | **eksperimen utama** (default) | DET saja, fps x 0,5 ... 6 | tetap = 100 ms (interval 10 FPS) |
+| `fps-intensity` | tambahan: "selesai sebelum frame berikutnya" | DET saja, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
+| `fps-fixed-deadline-4layers` | tambahan sintetis | 4 modul independen, fps x 0,5 ... 6 | tetap = 100 ms |
+| `app-layering` | tambahan sintetis: jenis layanan | 1-4 modul, fps nominal | 1000/fps |
 
 `fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban
 sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
@@ -122,6 +123,23 @@ link), antrean jaringan (teramati dikurangi ideal), tunggu modul, dan waktu pros
 CPU runtime (waktu sibuk / jendela emisi; YAFS tidak membagi CPU, nilai > 1 berarti node
 menjalankan pekerjaan konkuren melebihi IPT-nya), jumlah node dengan beban runtime > 1, dan jumlah
 layanan di cloud. Keluaran: `diagnosis_runs.csv` dan `diagnosis_summary.csv`.
+
+## Profil parameter dan skenario sensitivitas
+
+Node mewakili **kelas kemampuan**, bukan perangkat tertentu. Label sumber ada di komentar
+`config/*.py`: L = literatur, T = turunan, M = terukur, D = desain, placeholder = belum ada dasar.
+
+- Waktu DET: 209 / 93 / 12 / 10 ms untuk `cpu_A` / `cpu_B` / `accel_A` / `accel_B` (Alqahtani et al.,
+  arXiv 2409.16808, Sec. 3.3). `DET_INSTRUCTIONS = 93.000` (T) sehingga IPT ekuivalen 445 / 1.000 / 7.750 / 9.300.
+  Pemetaan ini hanya mereproduksi waktu DET; jangan diterapkan ke modul lain.
+- L1 utama `accel_B`; L2/L3/cloud = 3x / 10x / 10x IPT `accel_B` (D, "kapasitas layanan DET ekuivalen").
+- FPS 10 seragam (D), PR L1-L2 dan L2-L3 2 ms (adaptasi iFogSim DCNSFog), PR L3-cloud 25,6 ms (M->T).
+- Payload DET, RAM modul, BW L3-cloud, dan beban relatif CNT/REID/LPR masih placeholder.
+
+Skenario sensitivitas lewat opsi runner: `--l1-class {cpu_A,cpu_B,accel_A,accel_B}`,
+`--cloud-pr 100` (cloud 100 ms: tidak mungkin tepat waktu pada deadline 100 ms), dan `--fps-jitter 0.2`
+(sebaran fps antarkamera). Reservasi analitis (mis. satu aliran DET = 930 inst/ms = 10% IPT `accel_B`)
+bukan bukti kemampuan runtime atau jaminan deadline.
 
 ## Baseline dan ablasi
 

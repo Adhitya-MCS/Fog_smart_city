@@ -23,7 +23,7 @@ MIN_PAIRS = 5
 # initialization) and output paths may differ. Analysis code is excluded here because it does not
 # affect simulation results; the metric code is verified separately (check_metrics).
 REQUIRED_EQUAL = ('design', 'manifest_sha256', 'topology_seed', 'seed', 'runs', 'budget', 'duration',
-                  'drain_time', 'yafs_sha256', 'python', 'packages')
+                  'drain_time', 'l1_class', 'cloud_pr', 'fps_jitter', 'yafs_sha256', 'python', 'packages')
 CODE_PREFIXES = ('config/', 'generator/', 'placements/', 'runner/')
 SCENARIO_FILES = ('networkDefinition.json', 'appDefinition.json', 'usersDefinition.json')
 FIELDS = ['variant', 'algorithm', 'workload', 'metric', 'n', 'status', 'reference_mean', 'variant_mean',

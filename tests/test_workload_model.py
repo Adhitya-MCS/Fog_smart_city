@@ -35,7 +35,7 @@ class BaselineTests(unittest.TestCase):
         from generator.generate_scenario import generate_users
         from generator.hierarchical_topology import generate_hierarchical_topology, load_cameras
         cams = load_cameras("data/cameras_SYNTHETIC.csv")
-        topo, c2l1 = generate_hierarchical_topology(cams, 42)
+        topo, c2l1 = generate_hierarchical_topology(cams)
         apps = generate_applications(cams, 2, 1.0, 5)
         self.prob = common.build_problem(topo, apps, generate_users(apps, c2l1, 5))
 
@@ -52,6 +52,57 @@ class BaselineTests(unittest.TestCase):
         greedy = common.greedy_seed_chrom(self.prob)
         self.assertLessEqual(hops(common.nearest_feasible_chrom(self.prob)), hops(greedy))
         self.assertLessEqual(lat(common.min_latency_chrom(self.prob)), lat(greedy))
+
+
+class LiteratureProfileTests(unittest.TestCase):
+    def test_edge_ipt_reproduces_literature_det_times(self):
+        from config import app_params, topology_params as tp
+        self.assertEqual(app_params.DET_INSTRUCTIONS, 93_000)
+        self.assertEqual({k: v["IPT"] for k, v in tp.EDGE_CLASSES.items()},
+                         {"cpu_A": 445, "cpu_B": 1000, "accel_A": 7750, "accel_B": 9300})
+        for name, ms in tp.EDGE_DET_MS.items():
+            self.assertAlmostEqual(app_params.DET_INSTRUCTIONS / tp.EDGE_CLASSES[name]["IPT"], ms, delta=0.2)
+
+    def test_upper_tiers_are_multiples_of_reference_class(self):
+        from config import topology_params as tp
+        self.assertEqual(tp.NODE_CLASSES["L2"]["IPT"], 3 * 9300)
+        self.assertEqual(tp.NODE_CLASSES["L3"]["IPT"], 10 * 9300)
+        self.assertEqual(tp.CLOUD_ATTRS["IPT"], 10 * 9300)
+
+    def test_det_stream_reservation_is_one_tenth_of_reference_l1(self):
+        app = generate_applications(CAMS, 1, 1.0, 1, fixed_deadline=True)[0]
+        self.assertAlmostEqual(app["module"][0]["cpu_rate"], 930.0)
+        self.assertAlmostEqual(app["deadline"], 100.0)
+
+
+class TopologyOptionTests(unittest.TestCase):
+    @staticmethod
+    def build(**kw):
+        from generator.hierarchical_topology import generate_hierarchical_topology, load_cameras
+        return generate_hierarchical_topology(load_cameras("data/cameras_SYNTHETIC.csv"), **kw)[0]
+
+    def test_l1_class_and_cloud_propagation_are_applied(self):
+        topo = self.build(l1_class="cpu_B", cloud_pr_ms=100.0)
+        l1 = [e for e in topo["entity"] if e["type"] == "L1"]
+        self.assertEqual({(e["hw"], e["IPT"]) for e in l1}, {("cpu_B", 1000)})
+        self.assertEqual([l["PR"] for l in topo["link"] if l["class"] == "L3-CLOUD"], [100.0])
+
+    def test_defaults_and_unknown_class(self):
+        topo = self.build()
+        self.assertEqual({e["hw"] for e in topo["entity"] if e["type"] == "L1"}, {"accel_B"})
+        self.assertEqual([l["PR"] for l in topo["link"] if l["class"] == "L3-CLOUD"], [25.6])
+        with self.assertRaises(ValueError):
+            self.build(l1_class="hailo")
+
+
+class FpsJitterTests(unittest.TestCase):
+    def test_uniform_by_default_and_fixed_deadline_survives_jitter(self):
+        self.assertTrue(all(abs(a["fps"] - 10.0) < 1e-9 for a in generate_applications(CAMS, 1, 1.0, 4)))
+        base = generate_applications(CAMS, 1, 1.0, 4, fixed_deadline=True, fps_jitter=0.2)
+        fast = generate_applications(CAMS, 1, 4.0, 4, fixed_deadline=True, fps_jitter=0.2)
+        self.assertTrue(len({round(a["deadline"], 6) for a in base}) > 1)
+        for a, b in zip(base, fast):
+            self.assertAlmostEqual(a["deadline"], b["deadline"])
 
 
 class DeadlineDesignTests(unittest.TestCase):

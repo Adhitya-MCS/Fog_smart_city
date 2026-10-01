@@ -17,15 +17,16 @@ from config import app_params as app_cfg
 from config import users_params as user_cfg
 
 
-def generate_applications(cameras, layers, fps_multiplier=1.0, seed=42, fixed_deadline=False):
-    """Satu aplikasi BOT per kamera; deadline = interval frame (1000/fps), atau interval fps dasar bila fixed_deadline."""
+def generate_applications(cameras, layers, fps_multiplier=1.0, seed=42, fixed_deadline=False, fps_jitter=0.0):
+    """Satu aplikasi BOT per kamera; deadline = interval frame (1000/fps), atau interval fps dasar bila fixed_deadline.
+    fps_jitter: sebaran relatif fps dasar antarkamera (0 = seragam)."""
     rng = random.Random(seed)
     modules = app_cfg.layer_modules(layers)
     print(f"Generating {len(cameras)} applications ({layers} layers, fps x{fps_multiplier})...")
 
     applications = []
     for app_id, cam in enumerate(cameras):
-        base_fps = rng.uniform(user_cfg.FPS_MIN, user_cfg.FPS_MAX)
+        base_fps = rng.uniform(user_cfg.FPS_BASE * (1 - fps_jitter), user_cfg.FPS_BASE * (1 + fps_jitter))
         fps = base_fps * fps_multiplier
         deadline = 1000.0 / (base_fps if fixed_deadline else fps)
         app = {"id": app_id, "name": str(app_id), "deadline": deadline, "camera": cam["cam_id"], "fps": fps,
@@ -83,7 +84,7 @@ def main():
     fps_multiplier = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
 
     cameras = load_cameras(sys.argv[1])
-    topology, camera_to_l1 = generate_hierarchical_topology(cameras, seed=SEED)
+    topology, camera_to_l1 = generate_hierarchical_topology(cameras)
     applications = generate_applications(cameras, layers, fps_multiplier, seed=SEED)
     users = generate_users(applications, camera_to_l1, seed=SEED)
     for name, value in [("networkDefinition.json", topology), ("appDefinition.json", applications),

@@ -5,8 +5,8 @@ Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 Septe
 
 ## Pemeriksaan yang lulus
 
-- **34 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 17 pengujian model, diagnosis, ablasi, dan integrasi CLI (dua run kecil 7 level: deadline tetap
+- **40 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
+  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 24 pengujian model, profil literatur, opsi topologi, diagnosis, ablasi, dan integrasi CLI (dua run kecil 7 level: deadline tetap
   sama antarlevel, ablasi CLI melaporkan pasangan tak cukup, desain berbeda ditolak; kode metrik berbeda atau manifest analisis hilang ditolak)
   workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
   runner yang membuat deadline tetap antarlevel). Cakupan protokol:
@@ -42,9 +42,11 @@ Diuji dengan manifest sintetis `data/cameras_SYNTHETIC.csv` (46 kamera, 16 persi
 | Smoke B | `app-layering` (4 level), 1 run, 8 algoritma, budget 30, emisi 1000 ms, drain 1000 ms | 32 |
 | Smoke C | `fps-intensity` (7 level), 1 run, Greedy/Random/GA, budget 60, emisi 2000 ms, drain 2000 ms | 21 |
 | Smoke D | `fps-fixed-deadline` (7 level), konfigurasi sama dengan Smoke C | 21 |
+| Smoke F | **Profil literatur** (DET saja, `accel_B`, fps seragam 10), `fps-fixed-deadline` (7 level), 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms; ditambah varian `--l1-class cpu_B` dan `--cloud-pr 100` | 105 |
 | Smoke E | `fps-fixed-deadline` (7 level), 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms | 35 |
 
-Total 121 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil dijalankan
+Smoke A-E memakai profil parameter lama (kelas Hailo, empat modul, fps 8-12 acak) dan hanya
+menunjukkan bahwa pipeline berjalan. Total 226 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil dijalankan
 pada kelima batch. Yang diperiksa:
 
 - Emisi masuk akal terhadap perhitungan kasar (46 kamera x ~10 fps x 2 s x jumlah lapisan):
@@ -71,10 +73,22 @@ Penyimpangan terlokalisasi pada antrean link native YAFS: antrean CPU modul nol,
 2730 dari 3128 baris link memiliki `buffer > 0`. Estimasi optimizer tidak memodelkan antrean
 link, sehingga ia adalah batas bawah tanpa antrean. Skrip pembanding tidak ada di repositori.
 
+## Profil literatur (Smoke F)
+
+Pada konfigurasi utama (DET saja, `accel_B`, cloud 25,6 ms), Nearest dan MinLatency mencapai on-time
+1,000 pada semua level fps (x0,5-x6), sedangkan Greedy turun ke 0,06-0,49 mulai x3 dan GA/Random
+ke 0,46-0,66 pada x4-x6. Kebutuhan komputasi pada x6 (46 kamera x 930 inst/ms x 6 = 256.680 inst/ms)
+masih di bawah total kapasitas fog (353.400 inst/ms), sehingga rentang x0,5-x6 belum mencapai
+saturasi fog; titik jenuh agregat sekitar x8. Dengan L1 `cpu_B`, Nearest/MinLatency mulai turun pada
+x5-x6 (0,957 dan 0,497) dan memakai cloud 22% pada x6. Dengan cloud 100 ms, penggunaan cloud 0 pada
+semua level dan Greedy/GA/Random tidak lebih baik dari konfigurasi utama. Hasil 1 run, budget 60,
+manifest sintetis; bukan kesimpulan peringkat. **Ablasi v1 (`results/ablation-v1`) memakai profil
+lama dan tidak berlaku untuk konfigurasi ini.**
+
 ## Yang belum divalidasi
 
 - **Manifest CityFlowV2 belum diekstrak.** Seluruh hasil di atas memakai manifest sintetis.
-- **Parameter placeholder** wajib diganti sebelum hasil dipakai di paper: speedup L1b/L2/L3/cloud,
+- **Parameter placeholder** wajib diganti sebelum hasil dipakai di paper: kelipatan kapasitas L2/L3/cloud (D),
   `t_ref_ms` dan RAM modul, `FRAME_BYTES` (perkiraan), rentang fps, BW L3-cloud, PR L2-L3.
 - **Desain fps hanya diuji singkat** (Smoke C dan D: 1 run, 3 algoritma). Hasilnya operasional
   saja: ketuntasan on-time turun pada kedua desain saat fps naik (mis. GA x6: 0,16 pada deadline

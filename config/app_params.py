@@ -1,26 +1,26 @@
 """
 Aplikasi video analytics smart city (OpenFog RA Sec. 7.1).
 Satu kamera = satu aplikasi BOT; tiap lapisan analitik = satu modul yang menerima
-request dari kamera (source di node L1). Lapisan ke-n = n modul pertama LAYER_ORDER.
-Label sumber: literature, measured, design, placeholder.
+request langsung dari kamera (source di node L1), tanpa dependensi antarmodul.
+Label sumber: L = literatur, T = turunan, D = desain, placeholder = belum ada dasar.
 
-Instruksi modul = t_ref_ms * IPT_REF, sehingga waktu proses di L1a = t_ref_ms.
-Deadline aplikasi = interval frame (1000/fps); setiap modul harus selesai dalam
-deadline itu (lihat users_params untuk fps).
+Eksperimen utama memakai satu modul (DET). Modul lain (CNT, REID, LPR) hanya untuk
+eksperimen sintetis tambahan; beban relatifnya terhadap DET adalah placeholder.
+Deadline aplikasi = interval frame atau tetap (lihat users_params dan generator).
 """
-from config.topology_params import IPT_REF
 
-# Perkiraan (design), bukan hasil ukur. Acuan: CityFlow >=960p (Tang et al., 2019, Sec. 3.1);
-# OpenFog hlm. 96: 12 Mbps @ 30 fps = rata-rata 50 KB/frame video (batas bawah).
-# Frame mandiri (JPEG/I-frame) diasumsikan lebih besar. Wajib diukur dari video CityFlow.
-FRAME_BYTES = 150_000
+# T: waktu DET Pi 5 CPU 93 ms [Alqahtani et al., arXiv 2409.16808, Sec. 3.3] x 1.000 inst/ms.
+# Angka ini beban komputasi ekuivalen yang mereproduksi waktu DET, bukan hitungan instruksi hardware.
+DET_INSTRUCTIONS = 93_000
 
-# t_ref_ms: waktu layanan per request di L1a. in/out_bytes: request dan response.
+FRAME_BYTES = 150_000   # placeholder: frame >=960p terkompresi (CityFlow, Tang et al. 2019); batas bawah OpenFog 50 KB/frame; wajib diukur
+
+# rel_load: instruksi relatif terhadap DET. in/out_bytes: request dan response.
 MODULES = {
-    "DET":  dict(t_ref_ms=8.3,  RAM=300, in_bytes=FRAME_BYTES, out_bytes=2_000),   # t_ref: literature (lemah, forum Hailo), wajib diukur; RAM: placeholder
-    "CNT":  dict(t_ref_ms=3.0,  RAM=50,  in_bytes=2_000,       out_bytes=500),     # placeholder
-    "REID": dict(t_ref_ms=12.0, RAM=250, in_bytes=40_000,      out_bytes=2_000),   # placeholder
-    "LPR":  dict(t_ref_ms=15.0, RAM=300, in_bytes=FRAME_BYTES, out_bytes=500),     # pipeline: OpenFog hlm. 107; angka placeholder
+    "DET":  dict(rel_load=1.0,  RAM=300, in_bytes=FRAME_BYTES, out_bytes=2_000),   # beban: T; RAM, ukuran: placeholder
+    "CNT":  dict(rel_load=0.36, RAM=50,  in_bytes=2_000,       out_bytes=500),     # placeholder
+    "REID": dict(rel_load=1.45, RAM=250, in_bytes=40_000,      out_bytes=2_000),   # placeholder
+    "LPR":  dict(rel_load=1.8,  RAM=300, in_bytes=FRAME_BYTES, out_bytes=500),     # pipeline: OpenFog hlm. 107; angka placeholder
 }
 LAYER_ORDER = ["DET", "CNT", "REID", "LPR"]   # design
 
@@ -28,5 +28,5 @@ LAYER_ORDER = ["DET", "CNT", "REID", "LPR"]   # design
 def layer_modules(layers: int) -> list:
     if not 1 <= layers <= len(LAYER_ORDER):
         raise ValueError(f"layers={layers} must be between 1 and {len(LAYER_ORDER)}")
-    return [dict(MODULES[k], kind=k, instructions=int(round(MODULES[k]["t_ref_ms"] * IPT_REF)))
+    return [dict(MODULES[k], kind=k, instructions=int(round(MODULES[k]["rel_load"] * DET_INSTRUCTIONS)))
             for k in LAYER_ORDER[:layers]]

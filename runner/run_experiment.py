@@ -10,6 +10,7 @@ from pathlib import Path
 
 _project_root=Path(__file__).resolve().parents[1]
 if str(_project_root) not in sys.path:sys.path.insert(0,str(_project_root))
+from config.topology_params import EDGE_CLASSES,L1_CLASS,CLOUD_PR_MS
 from config.users_params import DESIGNS,level_label
 from generator.generate_scenario import generate_applications,generate_users
 from generator.hierarchical_topology import generate_hierarchical_topology,load_cameras
@@ -38,6 +39,9 @@ def main():
     p.add_argument('--design',choices=sorted(DESIGNS),default='fps-fixed-deadline',help='Stress-test levels on the frozen topology (main: fps-fixed-deadline)')
     p.add_argument('--manifest',type=Path,required=True,help='Camera manifest CSV (cam_id,intersection_id,zone_id,lat,lon)')
     p.add_argument('--topology-seed',type=int,default=42)
+    p.add_argument('--l1-class',choices=sorted(EDGE_CLASSES),default=L1_CLASS,help='Capability class of all L1 nodes')
+    p.add_argument('--cloud-pr',type=float,default=CLOUD_PR_MS,help='One-way L3-cloud propagation, ms')
+    p.add_argument('--fps-jitter',type=float,default=0.0,help='Relative spread of base fps across cameras (0 = uniform)')
     p.add_argument('--seed',type=int,default=20260909)
     p.add_argument('--runs',type=int,default=30)
     p.add_argument('--algorithms',default='Greedy,Nearest,MinLatency,GA,PSO,GWO,WOA,HHO,SA,Random')
@@ -55,7 +59,7 @@ def main():
     if len(set(algorithms))!=len(algorithms):p.error('Duplicate algorithm')
     if not set(algorithms)<=set([*BASELINES,*STRATEGIES]):p.error('Unknown algorithm')
     weights=(args.alpha,args.beta,args.gamma)
-    if args.runs<1 or args.budget<1:p.error('Invalid size, runs, or budget')
+    if args.runs<1 or args.budget<1 or args.cloud_pr<0 or not 0<=args.fps_jitter<1:p.error('Invalid size, runs, budget, cloud propagation, or fps jitter')
     if any(not math.isfinite(x) for x in [*weights,args.duration,args.drain_time]) or min(weights)<0 or sum(weights)<=0 or args.duration<=0 or args.drain_time<0:p.error('Invalid weights or observation windows')
     yafs_hashes=verify_yafs()
     args.output.mkdir(parents=True,exist_ok=False)
@@ -69,7 +73,7 @@ def main():
         'traffic':'one periodic camera stream (random phase) per BOT task, integer-ms replay',
         'statistics':'paired by instance ID; Holm correction per metric; signed effect sizes'})
     cameras=load_cameras(args.manifest)
-    topology,camera_to_l1=generate_hierarchical_topology(cameras,args.topology_seed)
+    topology,camera_to_l1=generate_hierarchical_topology(cameras,args.l1_class,args.cloud_pr)
     for level in levels:
         layers,fps_multiplier,fixed_deadline=level
         workload=level_label(args.design,level)
@@ -79,7 +83,7 @@ def main():
             scenario.mkdir(parents=True)
             app_seed=camera_seed(args.seed,args.topology_seed,run)
             traffic_seed=stable_seed(args.seed,args.topology_seed,workload,run,'traffic')
-            applications=generate_applications(cameras,layers,fps_multiplier,app_seed,fixed_deadline)
+            applications=generate_applications(cameras,layers,fps_multiplier,app_seed,fixed_deadline,args.fps_jitter)
             users=generate_users(applications,camera_to_l1,app_seed)
             for filename,value in [('networkDefinition.json',topology),('appDefinition.json',applications),('usersDefinition.json',users)]:
                 write_json(scenario/filename,value)

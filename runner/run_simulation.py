@@ -23,7 +23,7 @@ from runner.json_population import JSONPopulation
 from config.units import engine_topology
 import hashlib
 import math
-from runner.path_routing import create_routing_strategy
+from yafs.path_routing import DeviceSpeedAwareRouting
 
 
 AVAILABLE_PLACEMENTS = [n+'Placement' for n in ['Random','GA','PSO','GWO','WOA','HHO','SA','Greedy','Nearest','MinLatency']]
@@ -129,7 +129,6 @@ def validate_placement(placement_data, apps, topology_data):
 def run_simulation(
     placement_name: str,
     stop_time: int = 20000,
-    routing: str = "hop_aware",
     results_dir=None,
     scenarios_dir=None,
     drain_time: float = 10000,
@@ -141,7 +140,6 @@ def run_simulation(
     Args:
         placement_name: Name of placement (e.g., "CNPlacement", "GAPlacement")
         stop_time: Simulation duration in time units
-        routing: Path routing strategy
         results_dir: Override output directory (used by multi-instance runner)
         scenarios_dir: Override scenarios directory (used by multi-instance runner)
     """
@@ -157,8 +155,6 @@ def run_simulation(
     if results_dir is None:
         results_dir = project_root / "results" / placement_name
     results_dir = Path(results_dir)
-    if routing != 'hop_aware':
-        raise ValueError('Validated benchmark supports native hop_aware routing only')
     if not all(math.isfinite(x) for x in [stop_time,drain_time]) or stop_time<=0 or drain_time<0:
         raise ValueError('Invalid emission/drain window')
     if (results_dir/'sim_trace.csv').exists():
@@ -199,10 +195,8 @@ def run_simulation(
     placement = JSONPlacement(name=placement_name, json=placement_data)
     print("  ✓ Placement configured")
     
-    # Create routing
-    print("\nSetting up routing...")
-    selectorPath = create_routing_strategy(routing)
-    print(f"  ✓ Routing configured: {routing}")
+    # Native YAFS hop-aware routing (the only validated option)
+    selectorPath = DeviceSpeedAwareRouting()
     
     # Create simulator
     print("\nInitializing simulator...")
@@ -275,13 +269,6 @@ def main():
         help="Simulation duration in time units",
     )
     parser.add_argument(
-        "--routing",
-        type=str,
-        default="hop_aware",
-        choices=["hop_aware"],
-        help="Path routing strategy to use",
-    )
-    parser.add_argument(
         "--scenarios-dir",
         type=str,
         default=None,
@@ -293,7 +280,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        run_simulation(args.placement, args.duration, args.routing, scenarios_dir=args.scenarios_dir,drain_time=args.drain,run_seed=args.run_seed)
+        run_simulation(args.placement, args.duration, scenarios_dir=args.scenarios_dir,drain_time=args.drain,run_seed=args.run_seed)
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback

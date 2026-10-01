@@ -401,13 +401,6 @@ def evaluate_cpu_valid(chrom: List[int], prob: PlacementProblem) -> bool:
         node_load[node] = node_load.get(node, 0.0) + prob.service_cpu.get(i, 0.0)
     return all(load <= prob.node_ipt.get(n, 0.0) for n, load in node_load.items())
 
-def evaluate_deadline_valid(chrom: List[int], prob: PlacementProblem) -> bool:
-    for i, node in enumerate(chrom):
-        t_proc, t_comm = _calc_times(i, node, prob)
-        if (t_proc + t_comm) > prob.service_deadline.get(i, 1e12): return False
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Chromosome helpers
 # ---------------------------------------------------------------------------

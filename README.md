@@ -1,10 +1,11 @@
 # Constraint aware benchmark dengan YAFS tetap utuh
 
-Folder ini adalah salinan kode program dari `/Users/adhitya/constraint-aware`
-dengan perbaikan **hanya pada lapisan eksperimen**. Seluruh 12 file dalam `yafs/`
-identik byte demi byte dengan folder sumber. Tidak ada perubahan engine,
-monkey-patch, subclass simulator, shared CPU scheduler baru, atau penggantian
-aturan antrean link. Ini **bukan** folder engine SimPy pengganti sebelumnya.
+Benchmark penempatan layanan (placement) fog-cloud hierarkis untuk video analytics smart city
+(kamera -> L1 -> L2 -> L3 -> cloud, OpenFog RA Sec. 7.1), dengan stress test beban pada topologi
+beku. Seluruh perubahan ada di **lapisan eksperimen**; 12 file dalam `yafs/` identik byte demi
+byte dengan YAFS lokal yang dipakai (diverifikasi oleh `runner.integrity`). Tidak ada perubahan
+engine, monkey-patch, subclass simulator, shared CPU scheduler baru, atau penggantian aturan
+antrean link.
 
 Landasan identitas simulator adalah hash kode YAFS lokal yang Anda gunakan.
 Dokumen ini tidak mengklaim seluruh file lokal identik dengan setiap revisi branch
@@ -16,7 +17,7 @@ hash kode lokal pada `SOURCE_MANIFEST.json`.
 Python 3.11+; diuji memakai dependency yang tercatat di manifest setiap eksperimen.
 
 ```bash
-cd /Users/adhitya/hybrid_fog/constraint-aware-yafs-corrected
+cd constraint-aware-new
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
@@ -240,11 +241,4 @@ Uji integrasi bukan bukti threshold atau ranking ilmiah. Dibutuhkan benchmark
 penuh, sensitivity horizon/drain, topology, bobot, serta baseline/ablasi yang sesuai.
 Kode baru ini tidak menjamin hasil lama akan tetap sama.
 
-## Status penyalinan sumber
-
-Pada pemeriksaan akhir, tujuh file non-YAFS di folder sumber berbeda dari snapshot
-ketika folder ini dibuat. Salinan ini mempertahankan titik awal yang tercatat;
-perubahan sumber tersebut tidak ditimpa atau digabungkan otomatis.
-`SOURCE_CHANGES_SINCE_COPY.json` mencatat perbedaannya. Semua file YAFS tetap sama
-baik terhadap snapshot awal maupun folder sumber saat verifikasi akhir.
 Lihat `VALIDATION.md` untuk hasil validasi kode terbaru.

@@ -1,132 +1,86 @@
 # Validasi kode eksperimen YAFS
 
-Pemeriksaan terakhir: 30 September 2026. Dokumen ini menggantikan versi 10 September 2026
-(topologi Barabasi-Albert, workload acak, 66 simulasi), yang tidak lagi berlaku untuk kode ini.
+Pemeriksaan terakhir: 1 Oktober 2026. Menggantikan versi 10 September 2026 (topologi
+Barabasi-Albert, workload acak), yang tidak lagi berlaku.
 
 ## Pemeriksaan yang lulus
 
-- **40 pengujian otomatis** (`python -B -m unittest discover -s tests`): 16 pengujian protokol
-  YAFS dengan fixture kecil buatan sendiri (bukan topologi hierarkis), dan 24 pengujian model, profil literatur, opsi topologi, diagnosis, ablasi, dan integrasi CLI (dua run kecil 7 level: deadline tetap
-  sama antarlevel, ablasi CLI melaporkan pasangan tak cukup, desain berbeda ditolak; kode metrik berbeda atau manifest analisis hilang ditolak)
-  workload (koefisien cloud peka CPU, deadline terkopel vs tetap, `cpu_rate`, seed kamera
-  runner yang membuat deadline tetap antarlevel). Cakupan protokol:
-  - adapter bandwidth tidak mengubah konfigurasi kanonis; double conversion ditolak,
-  - latensi optimizer cocok dengan trace YAFS untuk satu link dan multihop tanpa antrean,
-  - reservasi CPU instructions/deadline tetap berlaku bila `cpu_rate` tidak ada; tidak ada
-    shared CPU scheduler baru,
-  - request lokal yang belum selesai masuk denominator; deadline pending dan missed dibedakan,
-  - drain window dan kasus tanpa emisi,
-  - seed source reproducible dan berbeda antar-source/run,
-  - budget, riwayat best-fitness, pairing run yang hilang, effect size, koreksi Holm.
+- **40 pengujian otomatis** (`python -B -m unittest discover -s tests`):
+  - 16 pengujian protokol YAFS dengan fixture kecil: adapter bandwidth (double conversion
+    ditolak), latensi optimizer sama dengan trace untuk satu link dan multihop tanpa antrean,
+    request lokal yang belum selesai masuk denominator, deadline pending dan missed dibedakan,
+    drain window dan kasus tanpa emisi, seed source reproducible, budget dan riwayat
+    best-fitness, pairing, effect size, dan koreksi Holm.
+  - 24 pengujian model dan alat: koefisien cloud peka CPU, `cpu_rate`, deadline terkopel vs
+    tetap, seed kamera runner, profil literatur (IPT 445/1.000/7.750/9.300), opsi topologi
+    (`--l1-class`, `--cloud-pr`), fps jitter, baseline Nearest/MinLatency, diagnosis tanpa
+    antrean, pengamanan pairing ablasi (desain, skenario, kode metrik, `instance_id` ganda,
+    pasangan kurang), dan integrasi CLI dua run kecil lintas 7 level.
 - **Integritas YAFS:** `python -B -m runner.integrity` melaporkan 12 file `yafs/` tidak berubah
-  (SHA-256 terhadap `SOURCE_MANIFEST.json`). Pemeriksaan yang sama dijalankan sebelum dan
-  sesudah setiap eksperimen oleh `runner.run_experiment`.
-- **Kualitas kode:** `pyflakes` bersih pada `placements`, `runner`, `analysis`, `generator`,
-  `config`, dan `tests` (`yafs/` sengaja tidak disentuh).
+  (SHA-256 terhadap `SOURCE_MANIFEST.json`); diperiksa sebelum dan sesudah setiap eksperimen.
+- **Kualitas kode:** `pyflakes` bersih pada semua folder kecuali `yafs/`.
+- **Pembersihan `_common.py` tidak mengubah hasil:** pada 28 kasus (10 algoritma, 3 mode cloud,
+  dua skenario) hash alokasi, `best_fitness` (9 digit), dan jumlah evaluasi identik sebelum dan
+  sesudah.
 
 ## Topologi hierarkis
 
-Diuji dengan manifest sintetis `data/cameras_SYNTHETIC.csv` (46 kamera, 16 persimpangan, 4 zona):
+Dengan manifest sintetis `data/cameras_SYNTHETIC.csv` (46 kamera, 16 persimpangan, 4 zona):
+L1 = 16, L2 = 4, L3 = 1, cloud = 1 (22 node), 41 link, graf terhubung, dan `Topology.load` YAFS
+asli memuatnya. Konversi BW memakai `config.units.engine_topology` (bytes/ms dibagi 1e6).
 
-- Hasil: L1 = 16, L2 = 4, L3 = 1, cloud = 1 (22 node); 41 link (16 L1-L2, 20 east-west,
-  4 L2-L3, 1 L3-cloud). Graf terhubung.
-- `Topology.load` YAFS asli memuat 22 node dan 41 edge.
-- Konversi BW ke engine memakai `config.units.engine_topology` (BW kanonis bytes/ms dibagi 1e6):
-  1 Gbps menjadi 0,125 dan 500 Mbps menjadi 0,0625.
+## Estimasi optimizer vs trace YAFS
+
+Beban sangat rendah (fps x0,05), latensi estimasi (`_calc_times`) vs latensi trace:
+
+| Kasus | Request | Hasil |
+| --- | --- | --- |
+| 1 modul, Random | 184 | 70 request tanpa tumpang tindih: selisih 0,000000 ms. 32 request menyimpang (sampai ~12 ms), semuanya tumpang tindih dengan request lain; tidak ada yang lebih cepat dari estimasi. |
+| 4 modul, GA | 736 | 566 request lebih lambat dari estimasi (sampai ~66 ms); tidak ada request bebas tumpang tindih. |
+
+Penyimpangan berasal dari antrean link native YAFS (antrean CPU modul nol; 2730 dari 3128 baris
+link memiliki `buffer > 0`). Estimasi optimizer adalah batas bawah tanpa antrean. Skrip
+pembandingnya tidak ada di repositori, dan pengujian ini memakai profil parameter lama.
 
 ## Integrasi (simulasi YAFS)
 
 | Batch | Konfigurasi | Simulasi |
 | --- | --- | --- |
-| Smoke A | `app-layering` (4 level), 1 run, Greedy/Random/GA, budget 40, emisi 2000 ms, drain 2000 ms | 12 |
-| Smoke B | `app-layering` (4 level), 1 run, 8 algoritma, budget 30, emisi 1000 ms, drain 1000 ms | 32 |
-| Smoke C | `fps-intensity` (7 level), 1 run, Greedy/Random/GA, budget 60, emisi 2000 ms, drain 2000 ms | 21 |
-| Smoke D | `fps-fixed-deadline` (7 level), konfigurasi sama dengan Smoke C | 21 |
-| Smoke F | **Profil literatur** (DET saja, `accel_B`, fps seragam 10), `fps-fixed-deadline` (7 level), 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms; ditambah varian `--l1-class cpu_B` dan `--cloud-pr 100` | 105 |
-| Smoke E | `fps-fixed-deadline` (7 level), 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms | 35 |
+| Smoke A-E | Profil lama (kelas Hailo, empat modul, fps 8-12 acak); desain `app-layering`, `fps-intensity`, `fps-fixed-deadline`; 1 run, budget 30-60 | 121 |
+| Smoke F | **Profil literatur** (DET saja, `accel_B`, fps 10), `fps-fixed-deadline` 7 level, 1 run, Greedy/Nearest/MinLatency/GA/Random, budget 60, emisi 2000 ms, drain 2000 ms; varian utama, `--l1-class cpu_B`, dan `--cloud-pr 100` | 105 |
 
-Smoke A-E memakai profil parameter lama (kelas Hailo, empat modul, fps 8-12 acak) dan hanya
-menunjukkan bahwa pipeline berjalan. Total 226 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil dijalankan
-pada kelima batch. Yang diperiksa:
+Semua 226 simulasi selesai tanpa error, dan `analysis.constraint_analysis` berhasil pada setiap
+batch. Pemeriksaan: jumlah emisi sesuai perhitungan kasar, seluruh source di node L1, dan runner
+tidak melaporkan penyimpangan emisi dari jadwal. Ini uji operasional, bukan bukti peringkat.
 
-- Emisi masuk akal terhadap perhitungan kasar (46 kamera x ~10 fps x 2 s x jumlah lapisan):
-  emitted 905, 1852, 2748, 3616 untuk 1-4 lapisan pada Smoke A.
-- Seluruh source berada di node bertipe L1 (184 source pada 4 lapisan).
-- Runner menghentikan eksekusi bila emisi menyimpang dari jadwal; tidak terjadi.
-- Pada level 1-2 emitted sama dengan completed untuk semua algoritma. Pada level 3-4 Smoke A,
-  Random menyisakan request yang belum selesai (2748 emitted / 2691 completed dan 3616 / 3590).
-  Level 3-4 Smoke B tidak saya tinjau satu per satu.
+### Smoke F (profil literatur)
 
-Ini uji operasional, bukan benchmark publikasi atau bukti peringkat algoritma.
-
-## Estimasi optimizer vs trace YAFS pada topologi hierarkis
-
-Skenario beban sangat rendah (fps x 0,05), manifest sintetis. Latensi estimasi optimizer
-(`_calc_times`) dibandingkan dengan latensi trace (waktu selesai aktuator - waktu emisi):
-
-| Kasus | Request | Hasil |
-| --- | --- | --- |
-| 1 lapisan, Random | 184 | 70 request tanpa tumpang tindih: selisih maksimum 0,000000 ms. 32 request menyimpang (sampai ~12 ms), seluruhnya tumpang tindih dengan request lain. Tidak ada yang lebih cepat dari estimasi. |
-| 4 lapisan, GA | 736 | 566 request lebih lambat dari estimasi (sampai ~66 ms), tidak ada yang lebih cepat. Tidak ada request bebas tumpang tindih, karena empat modul satu kamera mulai serentak. |
-
-Penyimpangan terlokalisasi pada antrean link native YAFS: antrean CPU modul nol, sedangkan
-2730 dari 3128 baris link memiliki `buffer > 0`. Estimasi optimizer tidak memodelkan antrean
-link, sehingga ia adalah batas bawah tanpa antrean. Skrip pembanding tidak ada di repositori.
-
-## Profil literatur (Smoke F)
-
-Pada konfigurasi utama (DET saja, `accel_B`, cloud 25,6 ms), Nearest dan MinLatency mencapai on-time
-1,000 pada semua level fps (x0,5-x6), sedangkan Greedy turun ke 0,06-0,49 mulai x3 dan GA/Random
-ke 0,46-0,66 pada x4-x6. Kebutuhan komputasi pada x6 (46 kamera x 930 inst/ms x 6 = 256.680 inst/ms)
-masih di bawah total kapasitas fog (353.400 inst/ms), sehingga rentang x0,5-x6 belum mencapai
-saturasi fog; titik jenuh agregat sekitar x8. Dengan L1 `cpu_B`, Nearest/MinLatency mulai turun pada
-x5-x6 (0,957 dan 0,497) dan memakai cloud 22% pada x6. Dengan cloud 100 ms, penggunaan cloud 0 pada
-semua level dan Greedy/GA/Random tidak lebih baik dari konfigurasi utama. Hasil 1 run, budget 60,
-manifest sintetis; bukan kesimpulan peringkat. **Ablasi v1 (`results/ablation-v1`) memakai profil
-lama dan tidak berlaku untuk konfigurasi ini.**
+- **Utama** (DET saja, `accel_B`, cloud 25,6 ms): Nearest dan MinLatency mencapai on-time 1,000
+  pada semua level (x0,5-x6); Greedy turun ke 0,06-0,49 mulai x3; GA dan Random 0,46-0,66 pada x4-x6.
+- Kebutuhan komputasi pada x6 (46 x 930 x 6 = 256.680 inst/ms) masih di bawah kapasitas fog
+  (353.400 inst/ms): rentang x0,5-x6 belum mencapai saturasi (titik jenuh agregat sekitar x8).
+- **L1 `cpu_B`:** Nearest/MinLatency turun pada x5-x6 (0,957 dan 0,497), cloud 22% pada x6.
+- **Cloud 100 ms:** penggunaan cloud 0 pada semua level; hasil lain mirip konfigurasi utama.
+- Pada Smoke A-E (profil lama), antrean jaringan menyumbang 88-99% latensi pada fps tinggi dan
+  antrean modul selalu 0; penurunan on-time terutama berasal dari beban, bukan dari deadline
+  yang mengetat. `time_log.json` mencatat `cloud_pressure` (koefisien aktual, tekanan RAM/CPU).
+- Ablasi v1 (`results/ablation-v1`, 5 run) memakai profil lama dan **tidak berlaku** untuk
+  konfigurasi ini.
 
 ## Yang belum divalidasi
 
-- **Manifest CityFlowV2 belum diekstrak.** Seluruh hasil di atas memakai manifest sintetis.
-- **Parameter placeholder** wajib diganti sebelum hasil dipakai di paper: kelipatan kapasitas L2/L3/cloud (D),
-  `t_ref_ms` dan RAM modul, `FRAME_BYTES` (perkiraan), rentang fps, BW L3-cloud, PR L2-L3.
-- **Desain fps hanya diuji singkat** (Smoke C dan D: 1 run, 3 algoritma). Hasilnya operasional
-  saja: ketuntasan on-time turun pada kedua desain saat fps naik (mis. GA x6: 0,16 pada deadline
-  1000/fps dan 0,22 pada deadline tetap; deadline kamera tetap 116,185 ms pada semua level
-  desain deadline tetap), sehingga penurunan terutama berasal dari beban,
-  bukan dari pengetatan deadline. Bukan bukti peringkat algoritma.
-- **`analysis.diagnosis`** memecah latensi request selesai menjadi jaringan ideal, antrean jaringan,
-  tunggu modul, dan waktu proses; pada topologi uji tanpa antrean, totalnya sama dengan latensi trace
-  dan antreannya nol. Pada uji operasional Smoke E (1 run, budget 60), antrean modul selalu 0 dan
-  antrean jaringan menyumbang sekitar 88-99% latensi pada fps x3-x6 (mis. GA x6: 559 dari 565 ms),
-  sedangkan pada beban rendah (x1) antrean hanya sebagian kecil. Artinya degradasi pada uji ini
-  berasal dari antrean link, bukan dari CPU modul. Ini hasil satu run, belum kesimpulan.
-- **Baseline Nearest dan MinLatency** (hop terdekat / estimasi latensi terendah yang muat) lolos uji
-  admisi RAM/CPU dan tidak lebih jauh/lambat dari Greedy pada skenario uji. Pada Smoke E
-  (budget metaheuristik hanya 60), keduanya mengungguli Greedy, dan pada fps x2-x3 juga GA dan
-  Random (mis. x2: on-time 1,000 pada keduanya vs 0,550 GA, 0,468 Random, 0,254 Greedy).
-  Ini menunjukkan heuristik sederhana yang sadar sumber adalah pembanding yang kuat; belum ada
-  kesimpulan peringkat karena 1 run, budget kecil, dan manifest sintetis.
-- **`time_log.json` kini mencatat `cloud_pressure`** (koefisien aktual, tekanan RAM/CPU fog, layanan di
-  cloud) untuk placement final; diverifikasi pada smoke run (mis. fps x6, Greedy: koefisien 0,0150,
-  tekanan CPU 0,974, 100 dari 184 layanan di cloud).
-- **Penalti cloud adaptif kini memakai tekanan `max(RAM, CPU)` dari layanan yang ditempatkan di fog.**
-  Angka 0,0947 (fps x1) dan 0,0150 (fps x6) di skenario 4 lapisan dihitung dari total demand
-  seluruh layanan (versi RAM-saja tetap 0,1371); koefisien aktual pada placement hasil optimasi
-  berbeda (GA, budget 60, x6: 0,0218 dengan reservasi CPU fog 39.308 / 46.000 inst/ms) dan
-  harus dilaporkan sebagai tekanan reservasi fog berdasarkan placement. Manfaatnya belum dibuktikan; ablasi `--cloud-mode` (adaptive/constant/none) belum dijalankan.
-- **Benchmark penuh** (30 run per level, budget 3000) belum dijalankan.
+- **Manifest CityFlowV2 belum diekstrak**; seluruh hasil memakai manifest sintetis.
+- **Placeholder:** payload DET (`FRAME_BYTES`) dan RAM modul, beban relatif CNT/REID/LPR terhadap
+  DET, kelipatan kapasitas L2/L3/cloud (D), dan BW L3-cloud.
+- **Benchmark penuh** (30 run, budget 3000), rentang level fps yang mencapai saturasi, dan
+  ablasi ulang pada profil literatur belum dijalankan.
 - **Tidak diperiksa ulang pada kode ini:** invarian emitted = completed + unfinished,
-  on-time + miss + pending = emisi, ledger emisi identik antarstrategi, dan reprodusibilitas
-  seed generator baru. Invarian tersebut diperiksa pada pipeline sebelumnya.
-- Waktu emisi periodik dibulatkan ke ms terdekat; efeknya belum diukur.
-- Seluruh modul satu kamera menerima frame pada fase yang sama; realisme asumsi ini dan
-  pengaruhnya pada antrean link belum dievaluasi.
-- Skema seed runner masih berbasis hash (`stable_seed`), bukan rumus seed yang direncanakan.
+  on-time + miss + pending = emisi, ledger emisi identik antarstrategi, dan reprodusibilitas seed.
+- Waktu emisi periodik dibulatkan ke ms terdekat (efek belum diukur); semua modul satu kamera
+  mulai serentak (pengaruhnya pada antrean link belum dievaluasi); seed runner berbasis hash.
 
 ## Batas model YAFS
 
 YAFS tidak membagi CPU antar-modul di node yang sama: tiap modul memiliki antrean FIFO sendiri
 dan memakai IPT penuh. Kapasitas node hanya ditegakkan oleh placement (reservasi `cpu_rate`).
-Model aplikasi adalah BOT; aliran DET -> REID sebagai pipeline belum dipakai. Energi tetap
-proxy per-task, bukan pengukuran energi perangkat.
+Model aplikasi adalah BOT (modul independen), bukan pipeline. Energi tetap proxy per-task.

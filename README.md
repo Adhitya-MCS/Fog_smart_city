@@ -49,36 +49,29 @@ python -B -m runner.run_experiment --output results/main-v1 \
 python -B -m analysis.constraint_analysis results/main-v1
 ```
 
-Benchmark utama belum dijalankan. Run berurutan menghindari kompetisi antarworker
-saat mengukur runtime placement. Output harus folder baru; trace dan hasil analisis
-yang sudah ada tidak ditimpa. Runner baru menggantikan orchestration lama yang
-menulis hasil di path bersama dan memiliki pilihan routing yang tidak konsisten.
-Hanya native `hop_aware` routing dan BOT request–response yang divalidasi.
+Benchmark utama belum dijalankan. Run berurutan menghindari kompetisi antarworker saat
+mengukur runtime placement. Output harus folder baru; hasil yang ada tidak ditimpa. Hanya
+routing native `hop_aware` dan model BOT request-response yang divalidasi.
 
-## Apa yang berubah
+## Komponen lapisan eksperimen
 
-| Lapisan | Perbaikan |
+| Komponen | Perilaku |
 | --- | --- |
-| Konfigurasi | BW kanonis disimpan dalam bytes/ms; loader memberi BW/1e6 kepada engine tanpa mengubah input asli |
-| Optimizer | Jalur minimum-hop dan insertion order graph mengikuti YAFS; serialisasi dijumlahkan per hop, propagation pergi dan pulang dihitung |
-| Trafik | Seed terpisah untuk setiap source/run; mempertahankan integer/minimum-one semantics dari distribusi exponential YAFS |
-| Population | Replay schedule melalui API `deploy_source`; emission dicatat setelah source loop mengirim, lalu dibandingkan dengan jadwal |
-| Runner | Source dihentikan melalui `stop_process` pada akhir emission window; satu pemanggilan `Sim.run` mencakup emission + drain |
-| Analisis | Completion dari response actuator; denominator langsung dari emission ledger termasuk request lokal yang masih menunggu |
-| Censoring | Request unfinished, deadline missed, deadline pending, dan komputasi dengan projected finish melewati cutoff dibedakan |
-| Repair | Skor marginal lokal mencakup deadline, cloud penalty, dan perubahan headroom pada service yang sudah dialokasikan |
-| Fairness | Budget maksimum fitness evaluations yang sama; actual count, runtime, convergence history, dan aktivitas repair disimpan |
-| Baseline | Greedy (kapasitas: IPT tertinggi), Nearest (hop terdekat ke sumber, lalu latensi), MinLatency (estimasi latensi terendah), semuanya dengan pengecekan RAM/CPU dan fallback cloud; Random memakai best-of-budget, bukan otomatis best-of-50 |
-| Statistik | Pairing berdasarkan instance ID, signed rank-biserial yang menangani zero differences, dan koreksi Holm per metrik |
+| Konfigurasi | BW kanonis dalam bytes/ms; adapter membagi 1e6 untuk engine tanpa mengubah input asli |
+| Optimizer | Jalur minimum-hop mengikuti YAFS; transmisi dijumlahkan per hop, propagasi dihitung pergi-pulang; antrean link tidak dimodelkan (batas bawah) |
+| Trafik | Source periodik per (kamera, modul), fase awal acak per kamera, replay waktu integer ms |
+| Population | Replay lewat API `deploy_source`; emisi dicatat setelah source loop mengirim dan dibandingkan dengan jadwal |
+| Runner | Source dihentikan di akhir jendela emisi; satu `Sim.run` mencakup emisi + drain |
+| Analisis | Completion dari respons aktuator; denominator dari ledger emisi; unfinished, deadline missed, dan deadline pending dibedakan |
+| Repair | Skor marginal lokal: latensi, hop, headroom, deadline, dan penalti cloud adaptif (`max(RAM, CPU)`) |
+| Fairness | Budget evaluasi fitness yang sama; jumlah aktual, runtime, riwayat konvergensi, dan aktivitas repair disimpan |
+| Baseline | Greedy (IPT tertinggi), Nearest (hop terdekat ke sumber), MinLatency (estimasi latensi terendah), semuanya dengan pengecekan RAM/CPU dan fallback cloud; Random memakai best-of-budget |
+| Statistik | Pairing per instance ID, signed rank-biserial, koreksi Holm per metrik; ablasi dan diagnosis di bawah |
 
-Yang **tidak berubah**: kode YAFS, native per-module CPU execution, native link
-queue yang mengikutsertakan propagation, dan makna headroom dalam objective asli.
-Reservasi CPU berupa laju (`cpu_rate` bila ada, jika tidak `instructions/deadline`) dan
-penalti cloud adaptif mengikuti tekanan fog `max(RAM, CPU)`. Varian algoritma tetap berasal dari
-sumber; fallback leader GWO diperbaiki ketika kurang dari tiga solusi unik.
-Mutasi HHO diberi nama segment mutation agar tidak disalahartikan sebagai sampling
-Lévy. PSO/GWO/WOA/HHO adalah adaptasi diskrit khusus proyek, bukan implementasi
-kanonis optimizer kontinu.
+YAFS tidak berubah: eksekusi CPU native per modul dan antrean link native yang mengikutsertakan
+propagasi. Reservasi CPU berupa laju (`cpu_rate`, jika tidak ada `instructions/deadline`).
+PSO/GWO/WOA/HHO adalah adaptasi diskrit khusus proyek, bukan implementasi kanonis optimizer
+kontinu; mutasi HHO dinamai segment mutation, bukan sampling Levy.
 
 ## Kontrak satuan
 
@@ -94,11 +87,6 @@ Uji satu link: payload 3.000.000 bytes membutuhkan transmisi 40 ms; propagation
 10 ms menghasilkan latency link 50 ms. Request dan response memakai perjalanan
 terpisah. Uji multihop juga membandingkan langsung estimasi optimizer dengan trace
 YAFS tanpa antrean. Queueing saat trafik bertambah tetap sepenuhnya milik YAFS.
-
-Angka lama dengan BW mentah 75.000 langsung ke engine merepresentasikan konfigurasi
-numerik berbeda. Jangan menggabungkan hasil lama dan hasil terkalibrasi. Jika ingin
-mereproduksi konfigurasi mentah penelitian lain, lakukan sebagai eksperimen
-reproduksi tersendiri dengan satuan dan input yang dinyatakan eksplisit.
 
 ## Desain stress test (`config/users_params.py`)
 

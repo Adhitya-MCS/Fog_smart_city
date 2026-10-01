@@ -105,6 +105,13 @@ class YAFSProtocolTests(unittest.TestCase):
         self.assertEqual(m['completion_ratio'],1)
         self.assertEqual(m['completion_by_emission_end'],0)
 
+    def test_cloud_and_fog_ontime_split(self):
+        topology,apps,users,alloc=fixture()
+        _,m=self.execute((topology,apps,users,alloc),horizon=100,drain=500)
+        self.assertEqual(m['requested_cloud_ratio'],1.0)
+        self.assertEqual(m['ontime_cloud_ratio'],m['ontime_delivery_ratio'])
+        self.assertIsNone(m['ontime_fog_ratio'])
+
     def test_empty_emissions(self):
         _,m=self.execute(times=[])
         self.assertEqual(m['emitted'],0)

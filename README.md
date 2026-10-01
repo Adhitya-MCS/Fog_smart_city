@@ -100,6 +100,14 @@ YAFS tanpa antrean. Queueing saat trafik bertambah tetap sepenuhnya milik YAFS.
 `fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban
 sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
 
+## Protokol dan peta keberhasilan
+
+`PROTOCOL.md` menetapkan RQ, metrik, ambang (on-time >= 0,95 dan < 0,50), tahap eksplorasi vs
+konfirmasi dengan seed terpisah, dan aturan pemilihan titik. Eksplorasi: `sh scripts/run_exploration.sh OUT`
+(grid beban x PR cloud x kelas L1; dapat dilanjutkan). `python -m analysis.regions OUT/regions OUT`
+menulis `regions.csv` (peta per kondisi, algoritma, dan level, dengan interval bootstrap atas run) dan
+`confirmation_points.json` (titik konfirmasi plus batas analitis PR cloud).
+
 ## Diagnosis penyebab degradasi
 
 ```bash

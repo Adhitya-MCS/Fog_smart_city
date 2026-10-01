@@ -41,6 +41,7 @@ def main():
     p.add_argument('--topology-seed',type=int,default=42)
     p.add_argument('--l1-class',choices=sorted(EDGE_CLASSES),default=L1_CLASS,help='Capability class of all L1 nodes')
     p.add_argument('--cloud-pr',type=float,default=CLOUD_PR_MS,help='One-way L3-cloud propagation, ms')
+    p.add_argument('--fps-multipliers',default=None,help='Comma list overriding the load multipliers of an fps design')
     p.add_argument('--fps-jitter',type=float,default=0.0,help='Relative spread of base fps across cameras (0 = uniform)')
     p.add_argument('--seed',type=int,default=20260909)
     p.add_argument('--runs',type=int,default=30)
@@ -55,6 +56,11 @@ def main():
     p.add_argument('--initialization',choices=['mixed','random'],default='mixed')
     args=p.parse_args()
     levels=DESIGNS[args.design]
+    if args.fps_multipliers:
+        if not args.design.startswith('fps'):p.error('--fps-multipliers applies to fps designs only')
+        multipliers=[float(m) for m in args.fps_multipliers.split(',')]
+        if min(multipliers)<=0:p.error('--fps-multipliers must be positive')
+        levels=[(levels[0][0],m,levels[0][2]) for m in multipliers]
     algorithms=args.algorithms.split(',')
     if len(set(algorithms))!=len(algorithms):p.error('Duplicate algorithm')
     if not set(algorithms)<=set([*BASELINES,*STRATEGIES]):p.error('Unknown algorithm')

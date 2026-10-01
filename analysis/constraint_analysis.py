@@ -49,6 +49,7 @@ def compute_metrics_for_trace(trace_csv,run_dir=None,scenarios_dir=None):
     allocations=json.loads((directory/'allocation_used.json').read_text())['initialAllocation']
     destinations={(str(a['app']),a['module_name']):a['id_resource'] for a in allocations}
     targeted=sum(destinations[str(r['app']),r['module']] in cloud for r in ledger)
+    to_cloud=pd.Series([destinations[a,m] in cloud for a,m in zip(merged['app'],merged['module'])],index=merged.index)
     # Native COMP_M is recorded at service START, with a projected finish.
     # This proxy clips partial processing and is NOT physical aggregate-node energy.
     max_ipt=max(node['IPT'] for node in nodes.values())
@@ -70,6 +71,8 @@ def compute_metrics_for_trace(trace_csv,run_dir=None,scenarios_dir=None):
         max_observed_response_ms=float(latencies.max()) if done.any() else None,
         completion_by_emission_end=ratio((done & (merged['completed_ms']<meta['emission_end_ms'])).sum(),n),
         requested_cloud_ratio=ratio(targeted,n),
+        ontime_cloud_ratio=ratio((ontime & to_cloud).sum(),to_cloud.sum()),
+        ontime_fog_ratio=ratio((ontime & ~to_cloud).sum(),(~to_cloud).sum()),
         completed_compute_cloud_ratio=ratio(task_done['TOPO.dst'].isin(cloud).sum(),len(task_done)),
         projected_computations_not_finished=int((task['time_out']>=end).sum()),
         energy_proxy_j=proxy,energy_interpretation='per-task delay-weighted proxy; not physical system energy',
@@ -78,7 +81,7 @@ def compute_metrics_for_trace(trace_csv,run_dir=None,scenarios_dir=None):
 
 METRICS=['completion_ratio','ontime_delivery_ratio','deadline_miss_ratio','completed_only_slav',
          'completed_only_cvi','mean_completed_response_ms','max_observed_response_ms',
-         'requested_cloud_ratio','completed_compute_cloud_ratio','energy_proxy_j']
+         'requested_cloud_ratio','ontime_cloud_ratio','ontime_fog_ratio','completed_compute_cloud_ratio','energy_proxy_j']
 
 
 def main():

@@ -52,21 +52,33 @@ placement terhadapnya, adalah salah satu hasil yang dilaporkan.
 
 | Tahap | Cakupan | Seed master |
 | --- | --- | --- |
-| Eksplorasi | Grid penuh: 8 level fps x 6 PR cloud (10, 25,6, 40, 44, 50, 100 ms) x 2 kelas L1 (`accel_B`, `cpu_B`) x 10 algoritma, 5 run, budget 3000 (`scripts/run_exploration.sh`) | 101 |
-| Konfirmasi | Titik terpilih oleh aturan di bawah ditambah titik beban rendah dan tinggi, 30 run | 202 (baru) |
+| Eksplorasi | 8 level fps x 4 PR cloud (10, 25,6, 44, 100 ms) x 2 kelas L1 (`accel_B`, `cpu_B`) x 4 algoritma (Nearest, MinLatency, GA, Random) x 3 run = **768 simulasi**, budget 3000 (`scripts/run_exploration.sh`). Hanya untuk menemukan wilayah transisi dan memperkirakan biaya, **bukan** untuk peringkat atau signifikansi | 101 |
+| Eskalasi | Sel eksplorasi yang run-nya berada di sisi berbeda dari ambang (ada run >= ambang dan ada run < ambang) dijalankan ulang dengan 5 run (seed tetap, run 1-3 identik, run 4-5 baru) | 101 |
+| Konfirmasi | **Seluruh 10 algoritma** pada titik terpilih, 30 run | 202 (baru) |
 | Ablasi | Kondisi representatif yang dipilih dengan aturan yang sama; cloud-mode (adaptive/constant/none) dan headroom aktif/nonaktif pada skenario identik | 202 |
 
-Run eksplorasi boleh dipakai memilih titik tambahan, tetapi **tidak digabung** dengan run
-konfirmasi (seed terpisah; seed run berbeda).
+Run eksplorasi dan eskalasi boleh dipakai memilih titik, tetapi **tidak digabung** dengan run
+konfirmasi (seed master terpisah). Wilayah transisi empat algoritma eksplorasi belum tentu mewakili
+algoritma lain, sehingga klaim peta lengkap dibatasi pada kondisi yang benar-benar diuji di
+konfirmasi.
 
 ### Aturan pemilihan titik konfirmasi
 
-Untuk setiap kondisi dan algoritma, urutkan level beban dan ambil: (a) level terendah dan tertinggi;
-(b) untuk setiap persilangan ambang 0,95 dan 0,50 antara dua level berdekatan, kedua level yang
-mengapit beserta titik tengahnya. Kondisi tanpa persilangan hanya mempertahankan titik ekstrem dan
-**dilaporkan apa adanya**; ambang tidak digeser untuk menciptakan persilangan. Titik di luar
-transisi dipertahankan untuk mendukung pernyataan seperti "heuristik cukup pada beban rendah".
-Level tengah baru dijalankan lewat `--fps-multipliers`.
+Untuk setiap kondisi dan algoritma eksplorasi, urutkan level beban dan ambil: (a) level terendah dan
+tertinggi, dan **titik tengah grid yang tetap (x6)**, selalu ikut, termasuk bila tidak ada
+persilangan; (b) untuk setiap persilangan ambang 0,95 dan 0,50 antara dua level berdekatan, kedua
+level yang mengapit beserta titik tengahnya. Titik dari semua algoritma eksplorasi digabung per
+kondisi dan diterapkan ke seluruh 10 algoritma. Kondisi tanpa persilangan **dilaporkan apa adanya**;
+ambang tidak digeser untuk menciptakan persilangan. Titik di luar transisi dipertahankan untuk
+mendukung pernyataan seperti "heuristik cukup pada beban rendah". Level tengah baru dijalankan lewat
+`--fps-multipliers`.
+
+## Riwayat versi
+
+| Versi | Perubahan | Alasan |
+| --- | --- | --- |
+| v1 (commit `89f7823`) | Grid 10 algoritma x 8 level x 6 PR x 2 kelas L1 x 5 run = 4.800 simulasi | Rancangan awal |
+| v2 | 768 simulasi (4 algoritma, 4 PR, 3 run), konfirmasi seluruh algoritma, titik tengah tetap, aturan eskalasi run | Eksplorasi hanya mencari wilayah transisi; biaya terukur 67 detik per kondisi-run (4 algoritma x 8 level), sehingga 24 kondisi-run sekitar 27 menit. Direvisi **sebelum ada hasil eksplorasi dilihat**. |
 
 ## Batas klaim
 

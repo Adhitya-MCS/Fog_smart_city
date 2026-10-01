@@ -104,7 +104,7 @@ sehingga pengaruh saturasi dapat dipisahkan dari pengetatan deadline.
 
 `PROTOCOL.md` menetapkan RQ, metrik, ambang (on-time >= 0,95 dan < 0,50), tahap eksplorasi vs
 konfirmasi dengan seed terpisah, dan aturan pemilihan titik. Eksplorasi: `sh scripts/run_exploration.sh OUT`
-(grid beban x PR cloud x kelas L1; dapat dilanjutkan). `python -m analysis.regions OUT/regions OUT`
+(beban x PR cloud x kelas L1 x 4 algoritma, 3 run; dapat dilanjutkan). `python -m analysis.regions OUT/regions OUT`
 menulis `regions.csv` (peta per kondisi, algoritma, dan level, dengan interval bootstrap atas run) dan
 `confirmation_points.json` (titik konfirmasi plus batas analitis PR cloud).
 

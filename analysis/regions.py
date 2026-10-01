@@ -49,6 +49,7 @@ def region_table(records_by_condition):
                 condition=condition, algorithm=algorithm, workload=workload, runs=len(runs),
                 ontime_mean=float(np.mean(ontime)), ontime_ci_low=lo, ontime_ci_high=hi,
                 runs_target_met=sum(v >= proto.ONTIME_TARGET for v in ontime) / len(runs),
+                straddles_threshold=any(min(ontime) < t <= max(ontime) for t in (proto.ONTIME_TARGET, proto.ONTIME_SEVERE)),
                 category=category(float(np.mean(ontime))),
                 unfinished_share=_mean([r['unfinished'] / r['emitted'] for r in runs]),
                 pending_share=_mean([r['deadline_pending'] / r['emitted'] for r in runs]),
@@ -60,14 +61,15 @@ def region_table(records_by_condition):
 
 def select_confirmation_points(rows):
     """Per condition: for each algorithm, the pair of adjacent levels bracketing each threshold
-    (and the midpoint between them), plus the lowest and highest level. No crossing -> extremes only."""
+    (and the midpoint between them), plus the lowest level, the highest level, and the fixed grid
+    midpoint. No crossing -> only the fixed points. Points are shared by all algorithms at confirmation."""
     series = defaultdict(list)
     for r in rows:
         series[r['condition'], r['algorithm']].append((r['workload'], r['ontime_mean']))
     points, notes = defaultdict(set), []
     for (condition, algorithm), values in sorted(series.items()):
         values.sort()
-        points[condition].update([values[0][0], values[-1][0]])
+        points[condition].update([values[0][0], values[-1][0], proto.FIXED_MIDPOINT_LEVEL])
         for threshold in (proto.ONTIME_TARGET, proto.ONTIME_SEVERE):
             crossings = [(a, b) for (a, va), (b, vb) in zip(values, values[1:]) if (va >= threshold) != (vb >= threshold)]
             if not crossings:
@@ -75,6 +77,12 @@ def select_confirmation_points(rows):
             for a, b in crossings:
                 points[condition].update([a, b, round((a + b) / 2, 6)])
     return {c: sorted(p) for c, p in points.items()}, notes
+
+
+def cells_to_escalate(rows):
+    """Exploration cells whose runs lie on both sides of a threshold: rerun with ESCALATED_RUNS runs."""
+    return [dict(condition=r['condition'], algorithm=r['algorithm'], workload=r['workload'])
+            for r in rows if r['straddles_threshold'] and r['runs'] < proto.ESCALATED_RUNS]
 
 
 def cloud_pr_max_ms(manifest_csv, l1_class='accel_B', deadline_ms=100.0):
@@ -110,7 +118,7 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
     (args.output / 'confirmation_points.json').write_text(json.dumps(
-        dict(points=points, notes=notes, target=proto.ONTIME_TARGET, severe=proto.ONTIME_SEVERE,
+        dict(protocol_version=proto.PROTOCOL_VERSION, points=points, escalate=cells_to_escalate(rows), notes=notes, target=proto.ONTIME_TARGET, severe=proto.ONTIME_SEVERE,
              analytic_cloud_pr_max_ms=cloud_pr_max_ms(args.manifest)), indent=2, allow_nan=False))
     print(f'{len(rows)} rows, {len(points)} conditions: {args.output}')
 

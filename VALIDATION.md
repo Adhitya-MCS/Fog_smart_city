@@ -5,13 +5,13 @@ Barabasi-Albert, workload acak), yang tidak lagi berlaku.
 
 ## Pemeriksaan yang lulus
 
-- **46 pengujian otomatis** (`python -B -m unittest discover -s tests`):
+- **47 pengujian otomatis** (`python -B -m unittest discover -s tests`):
   - 16 pengujian protokol YAFS dengan fixture kecil: adapter bandwidth (double conversion
     ditolak), latensi optimizer sama dengan trace untuk satu link dan multihop tanpa antrean,
     request lokal yang belum selesai masuk denominator, deadline pending dan missed dibedakan,
     drain window dan kasus tanpa emisi, seed source reproducible, budget dan riwayat
     best-fitness, pairing, effect size, dan koreksi Holm.
-  - 30 pengujian model dan alat (termasuk peta keberhasilan, aturan pemilihan titik, dan batas analitis cloud 43,615 ms): koefisien cloud peka CPU, `cpu_rate`, deadline terkopel vs
+  - 31 pengujian model dan alat (termasuk peta keberhasilan, aturan pemilihan titik, dan batas analitis cloud 43,615 ms): koefisien cloud peka CPU, `cpu_rate`, deadline terkopel vs
     tetap, seed kamera runner, profil literatur (IPT 445/1.000/7.750/9.300), opsi topologi
     (`--l1-class`, `--cloud-pr`), fps jitter, baseline Nearest/MinLatency, diagnosis tanpa
     antrean, pengamanan pairing ablasi (desain, skenario, kode metrik, `instance_id` ganda,

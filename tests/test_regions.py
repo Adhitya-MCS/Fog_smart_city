@@ -27,14 +27,22 @@ class RegionTests(unittest.TestCase):
         levels = {0.5: 1.0, 2.0: 0.99, 4.0: 0.97, 8.0: 0.80, 12.0: 0.2}
         rows = regions.region_table({'c': [record('GA', w, v) for w, v in levels.items()]})
         points, notes = regions.select_confirmation_points(rows)
-        self.assertEqual(points['c'], [0.5, 4.0, 6.0, 8.0, 10.0, 12.0])
+        self.assertEqual(points['c'], [0.5, 4.0, 6.0, 8.0, 10.0, 12.0])   # 6.0 = tengah tetap, juga titik tengah 4-8
         self.assertEqual(notes, [])
 
     def test_no_crossing_is_reported_not_forced(self):
         rows = regions.region_table({'c': [record('GA', w, 1.0) for w in (1.0, 2.0, 4.0)]})
         points, notes = regions.select_confirmation_points(rows)
-        self.assertEqual(points['c'], [1.0, 4.0])
+        self.assertEqual(points['c'], [1.0, 4.0, 6.0])
         self.assertEqual(len(notes), 2)
+
+    def test_cells_straddling_a_threshold_are_escalated_once(self):
+        rows = regions.region_table({'c': [record('GA', 4.0, 0.99, 1), record('GA', 4.0, 0.90, 2), record('GA', 4.0, 0.97, 3),
+                                           record('GA', 8.0, 0.30, 1), record('GA', 8.0, 0.40, 2), record('GA', 8.0, 0.35, 3)]})
+        cells = regions.cells_to_escalate(rows)
+        self.assertEqual(cells, [dict(condition='c', algorithm='GA', workload=4.0)])
+        full = regions.region_table({'c': [record('GA', 4.0, 0.99 if k % 2 else 0.90, k) for k in range(1, 6)]})
+        self.assertEqual(regions.cells_to_escalate(full), [])
 
     def test_analytic_cloud_bound_matches_estimator(self):
         self.assertAlmostEqual(regions.cloud_pr_max_ms('data/cameras_SYNTHETIC.csv'), 43.615, places=2)

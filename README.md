@@ -92,9 +92,9 @@ YAFS tanpa antrean. Queueing saat trafik bertambah tetap sepenuhnya milik YAFS.
 
 | Desain | Peran | Level | Deadline |
 | --- | --- | --- | --- |
-| `fps-fixed-deadline` | **eksperimen utama** (default) | DET saja, fps x 0,5 ... 6 | tetap = 100 ms (interval 10 FPS) |
-| `fps-intensity` | tambahan: "selesai sebelum frame berikutnya" | DET saja, fps x 0,5 ... 6 | 1000/fps (mengecil saat fps naik) |
-| `fps-fixed-deadline-4layers` | tambahan sintetis | 4 modul independen, fps x 0,5 ... 6 | tetap = 100 ms |
+| `fps-fixed-deadline` | **eksperimen utama** (default) | DET saja, fps x 0,5 ... 12 | tetap = 100 ms (interval 10 FPS) |
+| `fps-intensity` | tambahan: "selesai sebelum frame berikutnya" | DET saja, fps x 0,5 ... 12 | 1000/fps (mengecil saat fps naik) |
+| `fps-fixed-deadline-4layers` | tambahan sintetis | 4 modul independen, fps x 0,5 ... 12 | tetap = 100 ms |
 | `app-layering` | tambahan sintetis: jenis layanan | 1-4 modul, fps nominal | 1000/fps |
 
 `fps-intensity` mengubah beban dan SLA sekaligus; `fps-fixed-deadline` hanya mengubah beban

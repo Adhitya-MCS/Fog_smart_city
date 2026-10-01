@@ -6,7 +6,7 @@ FPS_BASE = 10   # L -> D: mayoritas video CityFlow 10 FPS (Tang et al., 2019); s
 
 # Level stress test pada topologi beku: (jumlah lapisan analitik, pengali fps, deadline tetap).
 # deadline tetap = interval frame pada fps dasar kamera (tidak mengecil saat fps dikalikan).
-_FPS_MULTIPLIERS = (0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+_FPS_MULTIPLIERS = (0.5, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0)   # D: mencakup saturasi agregat fog (sekitar x8)
 DESIGNS = {
     # utama: satu modul DET, hanya beban yang berubah
     "fps-fixed-deadline":         [(1, m, True) for m in _FPS_MULTIPLIERS],

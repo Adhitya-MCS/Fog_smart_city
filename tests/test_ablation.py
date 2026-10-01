@@ -89,6 +89,7 @@ class CliIntegrationTests(unittest.TestCase):
 
     def test_runner_levels_share_cameras_and_ablation_cli_reports_insufficient_pairs(self):
         from analysis import constraint_analysis
+        from config.users_params import DESIGNS
         from runner import run_experiment
         with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()):
             root = Path(tmp)
@@ -103,7 +104,7 @@ class CliIntegrationTests(unittest.TestCase):
             deadlines = []
             for scenario in sorted((root / 'full').glob('apps_*/run_1/scenario/appDefinition.json')):
                 deadlines.append([round(a['deadline'], 6) for a in json.loads(scenario.read_text())])
-            self.assertEqual(len(deadlines), 7)
+            self.assertEqual(len(deadlines), len(DESIGNS['fps-fixed-deadline']))
             self.assertTrue(all(d == deadlines[0] for d in deadlines))
 
             argv = ['ablation', str(root / 'out'), f"full={root / 'full'}", f"constant={root / 'constant'}"]
